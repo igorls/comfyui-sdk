@@ -2,33 +2,54 @@
 
 import WebSocketLib from "ws";
 
-let WebSocketImpl: typeof WebSocket;
+// Define WebSocketInterface to allow for custom implementation
+export interface WebSocketInterface {
+  new (url: string, protocols?: string | string[]): WebSocket;
+  new (url: string, options?: any): WebSocket;
+  CONNECTING: number;
+  OPEN: number;
+  CLOSING: number;
+  CLOSED: number;
+}
+
+// Default WebSocket implementation based on environment
+let DefaultWebSocketImpl: WebSocketInterface;
 
 if (typeof window !== "undefined" && window.WebSocket) {
   // In a browser environment
-  WebSocketImpl = window.WebSocket;
+  DefaultWebSocketImpl = window.WebSocket;
 } else {
   // In a Node.js environment
-  WebSocketImpl = WebSocketLib as any;
+  DefaultWebSocketImpl = WebSocketLib as any;
 }
 
 export interface WebSocketClientOptions {
   headers?: { [key: string]: string };
+  customWebSocketImpl?: WebSocketInterface;
 }
 
 export class WebSocketClient {
   private socket: WebSocket;
+  private readonly webSocketImpl: WebSocketInterface;
 
   constructor(url: string, options: WebSocketClientOptions = {}) {
-    const { headers } = options;
+    const { headers, customWebSocketImpl } = options;
+    
+    // Use custom WebSocket implementation if provided, otherwise use default
+    this.webSocketImpl = customWebSocketImpl || DefaultWebSocketImpl;
 
-    if (typeof window !== "undefined" && window.WebSocket) {
-      // Browser environment - WebSocket does not support custom headers
-      this.socket = new WebSocketImpl(url);
-    } else {
-      // Node.js environment - using ws package, which supports custom headers
-      const WebSocketConstructor = WebSocketImpl as any;
-      this.socket = new WebSocketConstructor(url, { headers });
+    try {
+      if (typeof window !== "undefined" && window.WebSocket) {
+        // Browser environment - WebSocket does not support custom headers
+        this.socket = new this.webSocketImpl(url);
+      } else {
+        // Node.js environment - using ws package, which supports custom headers
+        const WebSocketConstructor = this.webSocketImpl as any;
+        this.socket = new WebSocketConstructor(url, { headers });
+      }
+    } catch (error) {
+      console.error("WebSocket initialization failed:", error);
+      throw new Error(`WebSocket initialization failed: ${error instanceof Error ? error.message : String(error)}`);
     }
 
     return this;
@@ -39,14 +60,16 @@ export class WebSocketClient {
   }
 
   public send(message: string) {
-    if (this.socket.readyState === WebSocketImpl.OPEN) {
+    if (this.socket && this.socket.readyState === this.webSocketImpl.OPEN) {
       this.socket.send(message);
     } else {
-      console.error("WebSocket is not open");
+      console.error("WebSocket is not open or available");
     }
   }
 
   public close() {
-    this.socket.close();
+    if (this.socket) {
+      this.socket.close();
+    }
   }
 }

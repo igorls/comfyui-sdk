@@ -39,6 +39,7 @@ export class ComfyApi extends EventTarget {
 
   private wsTimeout: number = 10000;
   private wsTimer: Timer | null = null;
+  private _pollingTimer: NodeJS.Timeout | number | null = null;
 
   private apiBase: string;
   private clientId: string | null;
@@ -166,7 +167,14 @@ export class ComfyApi extends EventTarget {
    */
   destroy() {
     this.log("destroy", "Destroying client...");
+    // Clean up WebSocket timer
     if (this.wsTimer) clearInterval(this.wsTimer);
+    // Clean up polling timer if exists
+    if (this._pollingTimer) {
+      clearInterval(this._pollingTimer as any);
+      this._pollingTimer = null;
+    }
+    // Clean up socket event handlers
     if (this.socket?.client) {
       this.socket.client.onclose = null;
       this.socket.client.onerror = null;
@@ -888,35 +896,80 @@ export class ComfyApi extends EventTarget {
       });
   }
 
+  /**
+   * Attempts to reconnect the WebSocket with an exponential backoff strategy
+   * @param triggerEvent Whether to trigger disconnect/reconnect events
+   */
   public async reconnectWs(triggerEvent?: boolean) {
     if (triggerEvent) {
       this.dispatchEvent(new CustomEvent("disconnected"));
       this.dispatchEvent(new CustomEvent("reconnecting"));
     }
 
-    // Attempt reconnection with exponential backoff
+    // Maximum number of reconnection attempts
+    const MAX_ATTEMPTS = 10;
+    // Base delay in milliseconds
+    const BASE_DELAY = 1000;
+    // Maximum delay between attempts (15 seconds)
+    const MAX_DELAY = 15000;
+    
     let attempt = 0;
 
     const tryReconnect = () => {
       attempt++;
-      this.log("socket", `Reconnection attempt #${attempt}`);
+      this.log("socket", `WebSocket reconnection attempt #${attempt}`);
 
-      this.socket?.client.terminate();
-      this.socket?.close();
+      // Clean up any existing socket
+      if (this.socket?.client) {
+        try {
+          // Only call terminate if it exists (Node.js environment)
+          if (typeof this.socket.client.terminate === 'function') {
+            this.socket.client.terminate();
+          }
+          this.socket.close();
+        } catch (error) {
+          this.log("socket", "Error while closing previous socket", error);
+        }
+      }
+      
       this.socket = null;
 
-      this.createSocket(true);
+      // Create new socket connection
+      try {
+        this.createSocket(true);
+      } catch (error) {
+        this.log("socket", "Error creating socket during reconnect", error);
+      }
 
-      // Check if the socket is reconnected within a certain timeout
-      setTimeout(
-        () => {
-          if (!this.socket?.client || this.socket.client.readyState !== WebSocket.OPEN) {
-            this.log("socket", "Reconnection failed, retrying...");
+      // Calculate next retry delay with exponential backoff and jitter
+      if (attempt < MAX_ATTEMPTS) {
+        // Exponential backoff formula: baseDelay * 2^attempt + random jitter
+        const exponentialDelay = Math.min(
+          BASE_DELAY * Math.pow(2, attempt - 1),
+          MAX_DELAY
+        );
+        
+        // Add jitter (±30% of the delay) to prevent all clients reconnecting simultaneously
+        const jitter = exponentialDelay * 0.3 * (Math.random() - 0.5);
+        const delay = Math.max(1000, exponentialDelay + jitter);
+        
+        this.log("socket", `Will retry in ${Math.round(delay / 1000)} seconds`);
+
+        // Check if the socket is reconnected within the timeout
+        setTimeout(() => {
+          if (!this.socket?.client ||
+             (this.socket.client.readyState !== WebSocket.OPEN &&
+              this.socket.client.readyState !== WebSocket.CONNECTING)) {
+            this.log("socket", "Reconnection failed or timed out, retrying...");
             tryReconnect(); // Retry if not connected
+          } else {
+            this.log("socket", "Reconnection successful");
           }
-        },
-        Math.min(1000 * attempt, 10000)
-      ); // Exponential backoff up to 10 seconds
+        }, delay);
+      } else {
+        this.log("socket", `Maximum reconnection attempts (${MAX_ATTEMPTS}) reached.`);
+        this.dispatchEvent(new CustomEvent("reconnection_failed"));
+      }
     };
 
     tryReconnect();
@@ -930,36 +983,61 @@ export class ComfyApi extends EventTarget {
    * Creates and connects a WebSocket for real-time updates.
    * @param {boolean} isReconnect If the socket connection is a reconnect attempt.
    */
+  /**
+   * Creates and connects a WebSocket for real-time updates.
+   * Falls back to polling if WebSocket is unavailable.
+   * @param {boolean} isReconnect If the socket connection is a reconnect attempt.
+   */
   private createSocket(isReconnect: boolean = false) {
     let reconnecting = false;
+    let usePolling = false;
+    
     if (this.socket) {
       this.log("socket", "Socket already exists, skipping creation.");
       return;
     }
+    
     const headers = {
       ...this.getCredentialHeaders()
     };
+    
     const existingSession = `?clientId=${this.clientId}`;
-    this.socket = new WebSocketClient(
-      `ws${this.apiHost.includes("https:") ? "s" : ""}://${this.apiBase}/ws${existingSession}`,
-      { headers }
-    );
-    this.socket.client.onclose = () => {
-      if (reconnecting || isReconnect) return;
-      reconnecting = true;
-      this.log("socket", "Socket closed -> Reconnecting");
-      this.reconnectWs(true);
-    };
-    this.socket.client.onopen = () => {
-      this.resetLastActivity();
-      reconnecting = false;
-      this.log("socket", "Socket opened");
-      if (isReconnect) {
-        this.dispatchEvent(new CustomEvent("reconnected"));
-      } else {
-        this.dispatchEvent(new CustomEvent("connected"));
-      }
-    };
+    const wsUrl = `ws${this.apiHost.includes("https:") ? "s" : ""}://${this.apiBase}/ws${existingSession}`;
+    
+    // Try to create WebSocket connection
+    try {
+      this.socket = new WebSocketClient(wsUrl, { headers });
+      
+      this.socket.client.onclose = () => {
+        if (reconnecting || isReconnect) return;
+        reconnecting = true;
+        this.log("socket", "Socket closed -> Reconnecting");
+        this.reconnectWs(true);
+      };
+      
+      this.socket.client.onopen = () => {
+        this.resetLastActivity();
+        reconnecting = false;
+        usePolling = false; // Reset polling flag if we have an open connection
+        this.log("socket", "Socket opened");
+        if (isReconnect) {
+          this.dispatchEvent(new CustomEvent("reconnected"));
+        } else {
+          this.dispatchEvent(new CustomEvent("connected"));
+        }
+      };
+    } catch (error) {
+      this.log("socket", "WebSocket creation failed, falling back to polling", error);
+      this.socket = null;
+      usePolling = true;
+      this.dispatchEvent(new CustomEvent("websocket_unavailable", { detail: error }));
+      
+      // Set up polling mechanism
+      this.setupPollingFallback();
+    }
+    
+    // Only continue with WebSocket setup if creation was successful
+    if (this.socket?.client) {
     this.socket.client.onmessage = (event) => {
       this.resetLastActivity();
       try {
@@ -1007,19 +1085,91 @@ export class ComfyApi extends EventTarget {
       }
     };
 
-    this.socket.client.onerror = (e) => {
-      this.log("socket", "Socket error", e);
-    };
-    if (!isReconnect) {
-      this.wsTimer = setInterval(() => {
-        if (reconnecting) return;
-        if (Date.now() - this.lastActivity > this.wsTimeout) {
-          reconnecting = true;
-          this.log("socket", "Connection timed out, reconnecting...");
-          this.reconnectWs(true);
+      this.socket.client.onerror = (e) => {
+        this.log("socket", "Socket error", e);
+        
+        // If this is the first error and we're not already in reconnect mode
+        if (!reconnecting && !usePolling) {
+          usePolling = true;
+          this.log("socket", "WebSocket error, will try polling as fallback");
+          this.setupPollingFallback();
         }
-      }, this.wsTimeout / 2);
+      };
+      
+      if (!isReconnect) {
+        this.wsTimer = setInterval(() => {
+          if (reconnecting) return;
+          if (Date.now() - this.lastActivity > this.wsTimeout) {
+            reconnecting = true;
+            this.log("socket", "Connection timed out, reconnecting...");
+            this.reconnectWs(true);
+          }
+        }, this.wsTimeout / 2);
+      }
     }
+  }
+  
+  /**
+   * Sets up a polling mechanism as a fallback when WebSockets are unavailable
+   * Polls the server every 2 seconds for status updates
+   */
+  /**
+   * Sets up a polling mechanism as a fallback when WebSockets are unavailable
+   * Polls the server every 2 seconds for status updates
+   */
+  private setupPollingFallback() {
+    this.log("socket", "Setting up polling fallback mechanism");
+    
+    // Clear any existing polling timer
+    if (this._pollingTimer) {
+      try {
+        clearInterval(this._pollingTimer as any);
+        this._pollingTimer = null;
+      } catch (e) {
+        this.log("socket", "Error clearing polling timer", e);
+      }
+    }
+    
+    // Poll every 2 seconds
+    const POLLING_INTERVAL = 2000;
+    
+    const pollFn = async () => {
+      try {
+        // Poll execution status
+        const status = await this.pollStatus();
+        
+        // Simulate an event dispatch similar to WebSocket
+        this.dispatchEvent(new CustomEvent("status", { detail: status }));
+        
+        // Reset activity timestamp to prevent timeout
+        this.resetLastActivity();
+        
+        // Try to re-establish WebSocket connection periodically
+        if (!this.socket || !this.socket.client || this.socket.client.readyState !== WebSocket.OPEN) {
+          this.log("socket", "Attempting to restore WebSocket connection");
+          try {
+            this.createSocket(true);
+          } catch (error) {
+            // Continue with polling if WebSocket creation fails
+            this.log("socket", "WebSocket still unavailable, continuing with polling", error);
+          }
+        } else {
+          // WebSocket is back, we can stop polling
+          this.log("socket", "WebSocket connection restored, stopping polling");
+          if (this._pollingTimer) {
+            clearInterval(this._pollingTimer as any);
+            this._pollingTimer = null;
+          }
+        }
+      } catch (error) {
+        this.log("socket", "Polling error", error);
+      }
+    };
+    
+    // Using setInterval and casting to the expected type
+    this._pollingTimer = setInterval(pollFn, POLLING_INTERVAL) as any;
+    
+    this.log("socket", `Polling started with interval of ${POLLING_INTERVAL}ms`);
   }
 
   /**

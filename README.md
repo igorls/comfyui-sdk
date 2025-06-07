@@ -33,6 +33,7 @@ A robust and meticulously crafted TypeScript SDK 🚀 for seamless interaction w
 - **🏗️ Workflow Builder**: Construct and manipulate intricate ComfyUI workflows effortlessly using a fluent, intuitive builder pattern. 🧩
 - **🤹 Multi-Instance Management**: Handle a pool of ComfyUI instances with ease, employing flexible queueing strategies for optimal resource utilization. 🌐
 - **⚡ Real-Time Updates**: Subscribe to WebSocket events for live progress tracking, image previews, and error notifications. 🔔
+- **🔧 Custom WebSocket Support**: Supply your own WebSocket implementation for greater flexibility in different environments, with robust reconnection handling and fallback options. 🔄
 - **🔑 Authentication Flexibility**: Supports Basic Auth, Bearer Token, and Custom Authentication Headers, catering to diverse security requirements. 🔒
 - **🔌 Extension Support**: Seamlessly integrate with ComfyUI Manager and leverage system monitoring through the ComfyUI-Crystools extension. 🛠️
 - **🔀 Flexible Node Bypassing**: Strategically bypass specific nodes in your workflows during generation, enabling advanced customization. ⏭️
@@ -212,6 +213,32 @@ const customAuth = new ComfyApi("http://localhost:8189", "node-id", {
 
 - Import the necessary types from the SDK.
 - Create `ComfyApi` instances using the corresponding credential types: `BasicCredentials`, `BearerTokenCredentials`, and `CustomCredentials`..
+
+### 🔌 Custom WebSocket Implementation
+
+```typescript
+import { ComfyApi, WebSocketInterface } from "@saintno/comfyui-sdk";
+import CustomWebSocket from "your-custom-websocket-library";
+
+// Create a ComfyApi instance with a custom WebSocket implementation
+const api = new ComfyApi("http://localhost:8189", "node-id", {
+  credentials: { type: "basic", username: "username", password: "password" },
+  customWebSocketImpl: CustomWebSocket as WebSocketInterface
+}).init();
+```
+
+#### 🔍 Breakdown
+
+- Import the necessary types and your custom WebSocket implementation.
+- Pass the custom WebSocket implementation to the ComfyApi constructor using the `customWebSocketImpl` option.
+- The SDK will use your implementation instead of the default one, allowing for greater flexibility in environments where the standard WebSocket implementation might not be available or suitable.
+
+#### 📝 Benefits
+
+- **Environment Flexibility**: Run in environments where the standard WebSocket might not be available or optimal.
+- **Enhanced Stability**: The SDK includes robust reconnection logic with exponential backoff and jitter to handle connection issues gracefully.
+- **Fallback Mechanism**: Automatically falls back to HTTP polling if WebSocket connections fail, ensuring your application remains functional.
+- **Custom Protocol Support**: Implement custom protocols or security features through your WebSocket implementation.
 
 ## 📚 API Reference 📚
 
