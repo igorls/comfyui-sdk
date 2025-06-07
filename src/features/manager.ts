@@ -10,7 +10,8 @@ import {
   IExtensionUninstallRequest,
   IExtensionUpdateRequest,
   IExtensionActiveRequest,
-  IModelInstallRequest
+  IModelInstallRequest,
+  INodeMapItem
 } from "src/types/manager";
 import { AbstractFeature } from "./abstract";
 
@@ -22,7 +23,7 @@ export interface FetchOptions extends RequestInit {
 
 export class ManagerFeature extends AbstractFeature {
   async checkSupported() {
-    const data = await this.defaultUi().catch(() => false);
+    const data = await this.getVersion().catch(() => false);
     if (data !== false) {
       this.supported = true;
     }
@@ -46,17 +47,19 @@ export class ManagerFeature extends AbstractFeature {
    * We use this api to checking if the manager feature is supported.
    *
    * Default will return the current state.
+   * @deprecated Not working anymore
    */
-  async defaultUi(setUi?: TDefaultUI): Promise<TDefaultUI | false> {
-    let callURL = "/manager/default_ui";
-    if (setUi) {
-      callURL += `?value=${setUi}`;
-    }
+  async defaultUi(setUi?: TDefaultUI): Promise<boolean> {
+    return true;
+  }
+
+  async getVersion(): Promise<string> {
+    const callURL = "/manager/version";
     const data = await this.client.fetchApi(callURL);
     if (data && data.ok) {
-      return data.text() as Promise<TDefaultUI>;
+      return data.text() as Promise<string>;
     }
-    throw new Error("Failed to set default UI", { cause: data });
+    throw new Error("Failed to get version", { cause: data });
   }
 
   /**
@@ -68,7 +71,7 @@ export class ManagerFeature extends AbstractFeature {
    * @returns A promise that resolves to an array of extension nodes.
    * @throws An error if the retrieval fails.
    */
-  async getNodeMapList(mode: "local" | "nickname" = "local"): Promise<any> {
+  async getNodeMapList(mode: "local" | "nickname" = "local"): Promise<Array<INodeMapItem>> {
     const listNodes: TExtensionNodeItem[] = [];
     const data = await this.fetchApi(`/customnode/getmappings?mode=${mode}`);
     if (data && data.ok) {
@@ -191,7 +194,7 @@ export class ManagerFeature extends AbstractFeature {
    * @returns The result of the preview method.
    * @throws An error if the preview method fails to set.
    */
-  async previewMethod(mode?: TPreviewMethod) {
+  async previewMethod(mode?: TPreviewMethod): Promise<TPreviewMethod | undefined> {
     let callURL = "/manager/preview_method";
     if (mode) {
       callURL += `?value=${mode}`;

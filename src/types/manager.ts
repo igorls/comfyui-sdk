@@ -1,6 +1,10 @@
 export type TDefaultUI = "none" | "history" | "queue";
 export type TExtensionActive = "Enabled" | "Disabled";
 export type TPreviewMethod = "auto" | "latent2rgb" | "taesd" | "none";
+export enum EInstallationState {
+  NOT_INSTALLED = "not-installed",
+  INSTALLED = "installed"
+}
 
 enum EModelType {
   CHECKPOINT = "checkpoint",
@@ -21,6 +25,7 @@ enum EModelType {
 export enum EInstallType {
   GIT_CLONE = "git-clone",
   COPY = "copy",
+  CNR = "cnr",
   UNZIP = "unzip"
 }
 
@@ -52,13 +57,20 @@ export interface IExtensionInfo {
   title: string;
   id: string;
   reference: string;
+  repository: string;
   files: string[];
   install_type: EInstallType;
   description: string;
   stars: number;
   last_update: string;
   trust: boolean;
+  state: EInstallationState;
+  /**
+   * @deprecated Use `state` instead
+   */
   installed: boolean;
+  version: string;
+  updatable: boolean;
 }
 
 export interface IExtensionBaseRequest {
@@ -141,4 +153,14 @@ export interface IModelInstallRequest {
    * Model url to be downloaded
    */
   url: string;
+}
+
+export interface INodeMapItem {
+  url: string;
+  nodeNames: Array<string>;
+  title_aux: string;
+  title?: string;
+  author?: string;
+  nickname?: string;
+  description?: string;
 }
