@@ -13,40 +13,42 @@ const start = Date.now();
 
 console.log("JSCompiling", "Building...");
 
-await Promise.all([
-  Bun.build({
-    entrypoints: ["./index.ts"],
-    external: Object.keys(dependencies).concat(Object.keys(peerDependencies)),
-    format: "esm",
-    minify: true,
-    outdir: "./build",
-    naming: "index.esm.js",
-    sourcemap: "external",
-    target: "browser"
-  }),
-  Bun.build({
-    entrypoints: ["./index.ts"],
-    external: Object.keys(dependencies).concat(Object.keys(peerDependencies)),
-    format: "cjs",
-    minify: true,
-    outdir: "./build",
-    naming: "index.cjs",
-    sourcemap: "external",
-    target: "node"
-  })
-]);
-console.log("JSCompiling", "Done!");
+(async () => {
+  await Promise.all([
+    Bun.build({
+      entrypoints: ["./index.ts"],
+      external: Object.keys(dependencies).concat(Object.keys(peerDependencies)),
+      format: "esm",
+      minify: true,
+      outdir: "./build",
+      naming: "index.esm.js",
+      sourcemap: "external",
+      target: "browser"
+    }),
+    Bun.build({
+      entrypoints: ["./index.ts"],
+      external: Object.keys(dependencies).concat(Object.keys(peerDependencies)),
+      format: "cjs",
+      minify: true,
+      outdir: "./build",
+      naming: "index.cjs",
+      sourcemap: "external",
+      target: "node"
+    })
+  ]);
+  console.log("JSCompiling", "Done!");
 
-console.log("TypeCompiling", "Building...");
-const typedContent = generateDtsBundle([
-  {
-    filePath: "./index.ts"
-  }
-]);
+  console.log("TypeCompiling", "Building...");
+  const typedContent = generateDtsBundle([
+    {
+      filePath: "./index.ts"
+    }
+  ]);
 
-// Write typed content to index.d.ts
-fs.writeFileSync("./build/index.d.ts", typedContent.join("\n"));
-console.log("TypeCompiling", "Done!");
-console.log("Build", `Build success, take ${Date.now() - start}ms`);
+  // Write typed content to index.d.ts
+  fs.writeFileSync("./build/index.d.ts", typedContent.join("\n"));
+  console.log("TypeCompiling", "Done!");
+  console.log("Build", `Build success, take ${Date.now() - start}ms`);
 
-console.log("Build", "Done!");
+  console.log("Build", "Done!");
+})();

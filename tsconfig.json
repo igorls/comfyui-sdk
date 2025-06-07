@@ -23,6 +23,6 @@
     "baseUrl": ".",
     "typeRoots": ["./node_modules/@types"]
   },
-  "include": ["src/**/*", "index.ts", "test"],
+  "include": ["src/**/*", "index.ts", "test", "build.ts"],
   "exclude": ["node_modules", "build"]
 }

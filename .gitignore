@@ -177,4 +177,5 @@ dist
 build
 
 test.ts
+test.js
 temp/
