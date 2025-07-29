@@ -574,11 +574,8 @@ export class ComfyApi extends EventTarget {
     }
   ): Promise<{ info: ImageInfo; url: string } | false> {
     const formData = new FormData();
-    if (file instanceof Buffer) {
-      formData.append("image", new Blob([file]), fileName);
-    } else {
-      formData.append("image", file, fileName);
-    }
+    const fileBlob = file instanceof Buffer ? new Blob([new Uint8Array(file)]) : (file as Blob);
+    formData.append("image", fileBlob, fileName);
     formData.append("subfolder", config?.subfolder ?? "");
     formData.append("overwrite", config?.override?.toString() ?? "false");
 
@@ -617,11 +614,8 @@ export class ComfyApi extends EventTarget {
     const formData = new FormData();
 
     // Append the image file to the form data
-    if (file instanceof Buffer) {
-      formData.append("image", new Blob([file]), "mask.png");
-    } else {
-      formData.append("image", file, "mask.png");
-    }
+    const fileBlob = file instanceof Buffer ? new Blob([new Uint8Array(file)]) : (file as Blob);
+    formData.append("image", fileBlob, "mask.png");
 
     // Append the original reference as a JSON string
     formData.append("original_ref", JSON.stringify(originalRef));

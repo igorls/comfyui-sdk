@@ -204,6 +204,7 @@ export class ComfyPool extends EventTarget {
    * @param {Function} job The job to be executed.
    * @param {number} [weight] The weight of the job.
    * @param {Object} [clientFilter] An object containing client filtering options.
+   * @param {Object} [options] Additional options for job execution.
    * @returns {Promise<T>} A promise that resolves with the result of the job.
    */
   run<T>(
@@ -218,25 +219,86 @@ export class ComfyPool extends EventTarget {
        * The following clientIds will be excluded from the picking list.
        */
       excludeIds?: string[];
+    },
+    options?: {
+      /**
+       * Whether to enable automatic failover to other clients when one fails.
+       * Defaults to true.
+       */
+      enableFailover?: boolean;
+      /**
+       * Maximum number of retry attempts on different clients.
+       * Defaults to the number of available clients.
+       */
+      maxRetries?: number;
+      /**
+       * Delay between retry attempts in milliseconds.
+       * Defaults to 1000ms.
+       */
+      retryDelay?: number;
     }
   ): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      const fn = async (client: ComfyApi, idx?: number) => {
-        this.dispatchEvent(new CustomEvent("executing", { detail: { client, clientIdx: idx } }));
+    const enableFailover = options?.enableFailover !== false; // Default to true
+    const retryDelay = options?.retryDelay || 1000;
+    
+    return new Promise<T>(async (resolve, reject) => {
+      let excludedIds = clientFilter?.excludeIds ? [...clientFilter.excludeIds] : [];
+      let attempt = 0;
+      const onlineClients = this.clientStates.filter(c => c.online);
+      const maxRetries = options?.maxRetries || onlineClients.length;
+      let lastError: any = null;
+
+      const tryExecute = async (): Promise<void> => {
+        attempt++;
+        
+        const fn = async (client: ComfyApi, idx?: number) => {
+          this.dispatchEvent(new CustomEvent("executing", { detail: { client, clientIdx: idx } }));
+          try {
+            const result = await job(client, idx);
+            this.dispatchEvent(new CustomEvent("executed", { detail: { client, clientIdx: idx } }));
+            resolve(result);
+          } catch (e) {
+            lastError = e;
+            console.error(`[ComfyPool] Job failed on client ${client.id} (attempt ${attempt}/${maxRetries}):`, e);
+            
+            // If failover is enabled and we have more attempts, exclude this client and retry
+            if (enableFailover && attempt < maxRetries && onlineClients.length > excludedIds.length) {
+              excludedIds.push(client.id);
+              this.dispatchEvent(
+                new CustomEvent("execution_error", {
+                  detail: { client, clientIdx: idx, error: e, willRetry: true, attempt, maxRetries }
+                })
+              );
+              
+              // Wait before retrying
+              setTimeout(() => {
+                tryExecute().catch(reject);
+              }, retryDelay);
+            } else {
+              // No more retries or failover disabled, reject with the error
+              this.dispatchEvent(
+                new CustomEvent("execution_error", {
+                  detail: { client, clientIdx: idx, error: e, willRetry: false, attempt, maxRetries }
+                })
+              );
+              reject(e);
+            }
+          }
+        };
+        
         try {
-          resolve(await job(client, idx));
-          this.dispatchEvent(new CustomEvent("executed", { detail: { client, clientIdx: idx } }));
-        } catch (e) {
-          console.error(e);
-          reject(e);
-          this.dispatchEvent(
-            new CustomEvent("execution_error", {
-              detail: { client, clientIdx: idx, error: e }
-            })
-          );
+          await this.claim(fn, weight, { 
+            includeIds: clientFilter?.includeIds,
+            excludeIds: excludedIds 
+          });
+        } catch (claimError) {
+          // If we can't claim a client (e.g., all excluded), reject
+          reject(lastError || claimError);
         }
       };
-      this.claim(fn, weight, clientFilter);
+
+      // Start the first attempt
+      tryExecute().catch(reject);
     });
   }
 

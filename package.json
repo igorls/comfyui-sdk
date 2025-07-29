@@ -2,15 +2,14 @@
   "name": "@saintno/comfyui-sdk",
   "version": "0.2.47",
   "description": "SDK for ComfyUI",
-  "main": "build/index.esm.js",
+  "main": "build/index.js",
   "typings": "build/index.d.ts",
   "type": "module",
   "exports": {
     ".": {
-      "import": "./build/index.esm.js",
-      "require": "./build/index.cjs",
+      "import": "./build/index.js",
       "types": "./build/index.d.ts",
-      "default": "./build/index.esm.js"
+      "default": "./build/index.js"
     }
   },
   "repository": {
@@ -25,18 +24,16 @@
   "homepage": "https://github.com/tctien342/comfyui-sdk#readme",
   "devDependencies": {
     "@types/bun": "^1.1.11",
-    "@types/jest": "^29.5.12",
-    "@types/node": "^22.2.0",
+    "@types/jest": "30.0.0",
+    "@types/node": "24.1.0",
     "@types/ws": "^8.5.12",
     "auto-changelog": "^2.3.0",
     "commitizen": "^4.2.4",
     "cz-conventional-changelog": "^3.3.0",
-    "dts-bundle-generator": "^9.5.1",
-    "prettier": "^3.4.2"
+    "prettier": "^3.4.2",
+    "typescript": "^5.8.3"
   },
-  "peerDependencies": {
-    "typescript": "^5.0.0"
-  },
+  "peerDependencies": {},
   "keywords": [
     "comfyui",
     "sdk",
@@ -48,7 +45,7 @@
     "comfyui-sdk"
   ],
   "dependencies": {
-    "ws": "^8.18.0"
+    "ws": "8.18.3"
   },
   "scripts": {
     "version": "auto-changelog -p",

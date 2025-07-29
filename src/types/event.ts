@@ -148,6 +148,9 @@ export type TComfyPoolEventMap = {
     client: ComfyApi;
     clientIdx: number;
     error: Error;
+    willRetry?: boolean;
+    attempt?: number;
+    maxRetries?: number;
   }>;
   system_monitor: CustomEvent<{
     client: ComfyApi;
