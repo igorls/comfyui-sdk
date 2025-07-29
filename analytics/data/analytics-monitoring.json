@@ -1,0 +1,15 @@
+{
+  "metrics": [
+    {
+      "host": "test-run",
+      "timestamp": "2025-07-29T21:28:47.193Z",
+      "queue": {
+        "size": 0,
+        "running": 0,
+        "pending": 0
+      },
+      "status": "offline"
+    }
+  ],
+  "lastUpdate": "2025-07-29T21:28:47.193Z"
+}

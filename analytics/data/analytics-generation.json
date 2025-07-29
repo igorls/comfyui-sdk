@@ -1,0 +1,92 @@
+{
+  "testDate": "2025-07-29T22:58:29.376Z",
+  "totalDuration": 4316,
+  "totalJobs": 6,
+  "successfulJobs": 6,
+  "failedJobs": 0,
+  "averageJobDuration": 2637.5,
+  "hostPerformance": {
+    "aero-16": {
+      "totalJobs": 6,
+      "completedJobs": 6,
+      "failedJobs": 0,
+      "totalDuration": 15825,
+      "averageDuration": 2637.5,
+      "progressUpdates": 36
+    }
+  },
+  "jobs": [
+    {
+      "jobId": "job-1753829905200-4af33zxpd",
+      "host": "aero-16",
+      "startTime": "2025-07-29T22:58:25.200Z",
+      "status": "completed",
+      "progressUpdates": 6,
+      "endTime": "2025-07-29T22:58:27.578Z",
+      "duration": 2378,
+      "images": [
+        "http://192.168.100.216:10888/view?filename=ComfyUI_00176_.png&type=output&subfolder="
+      ]
+    },
+    {
+      "jobId": "job-1753829905202-64oid5vyw",
+      "host": "aero-16",
+      "startTime": "2025-07-29T22:58:25.202Z",
+      "status": "completed",
+      "progressUpdates": 6,
+      "endTime": "2025-07-29T22:58:26.174Z",
+      "duration": 972,
+      "images": [
+        "http://192.168.100.216:10888/view?filename=ComfyUI_00174_.png&type=output&subfolder="
+      ]
+    },
+    {
+      "jobId": "job-1753829905202-0p119ksa2",
+      "host": "aero-16",
+      "startTime": "2025-07-29T22:58:25.202Z",
+      "status": "completed",
+      "progressUpdates": 6,
+      "endTime": "2025-07-29T22:58:26.968Z",
+      "duration": 1766,
+      "images": [
+        "http://192.168.100.216:10888/view?filename=ComfyUI_00175_.png&type=output&subfolder="
+      ]
+    },
+    {
+      "jobId": "job-1753829905203-mns0hqd9h",
+      "host": "aero-16",
+      "startTime": "2025-07-29T22:58:25.203Z",
+      "status": "completed",
+      "progressUpdates": 6,
+      "endTime": "2025-07-29T22:58:28.167Z",
+      "duration": 2964,
+      "images": [
+        "http://192.168.100.216:10888/view?filename=ComfyUI_00177_.png&type=output&subfolder="
+      ]
+    },
+    {
+      "jobId": "job-1753829905203-z8d0qx98u",
+      "host": "aero-16",
+      "startTime": "2025-07-29T22:58:25.203Z",
+      "status": "completed",
+      "progressUpdates": 6,
+      "endTime": "2025-07-29T22:58:28.776Z",
+      "duration": 3573,
+      "images": [
+        "http://192.168.100.216:10888/view?filename=ComfyUI_00178_.png&type=output&subfolder="
+      ]
+    },
+    {
+      "jobId": "job-1753829905203-re72r8giu",
+      "host": "aero-16",
+      "startTime": "2025-07-29T22:58:25.203Z",
+      "status": "completed",
+      "progressUpdates": 6,
+      "endTime": "2025-07-29T22:58:29.375Z",
+      "duration": 4172,
+      "images": [
+        "http://192.168.100.216:10888/view?filename=ComfyUI_00179_.png&type=output&subfolder="
+      ]
+    }
+  ]
+}

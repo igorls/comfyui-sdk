@@ -1,0 +1,31 @@
+{
+  "hosts": [
+    {
+      "name": "bruno-desktop",
+      "url": "http://192.168.100.179:10888",
+      "priority": 100,
+      "enabled": true,
+      "timeout": 500,
+      "maxConcurrentJobs": 3,
+      "tags": [
+        "fast",
+        "anime-models"
+      ]
+    }
+  ],
+  "workflows": [],
+  "settings": {
+    "healthCheckInterval": 30000,
+    "requestTimeout": 120000,
+    "maxRetries": 2,
+    "loadBalancing": {
+      "strategy": "priority",
+      "enableFailover": true
+    },
+    "discovery": {
+      "enabled": true,
+      "interval": 120000,
+      "checkModelsOnStartup": false
+    }
+  }
+}

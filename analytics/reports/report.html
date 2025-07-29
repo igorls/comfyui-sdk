@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ComfyUI SDK - Relatório de Testes</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+        margin: 0;
+        padding: 20px;
+        background-color: #f5f5f5;
+        color: #333;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        color: #2c3e50;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 10px;
+      }
+      h2 {
+        color: #2980b9;
+        margin-top: 30px;
+      }
+      .section {
+        margin-bottom: 30px;
+        padding: 15px;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+      }
+      .stat {
+        display: flex;
+        justify-content: space-between;
+        border-bottom: 1px solid #eee;
+        padding: 8px 0;
+      }
+      .stat-value {
+        font-weight: bold;
+      }
+      .chart-container {
+        width: 100%;
+        height: 300px;
+        margin: 20px 0;
+      }
+      .table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 15px 0;
+      }
+      .table th,
+      .table td {
+        border: 1px solid #ddd;
+        padding: 8px 12px;
+        text-align: left;
+      }
+      .table th {
+        background-color: #f2f2f2;
+      }
+      .table tr:nth-child(even) {
+        background-color: #f9f9f9;
+      }
+      .gallery {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 15px;
+        margin: 15px 0;
+      }
+      .gallery-item {
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .gallery-item img {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .gallery-item-info {
+        padding: 8px;
+        font-size: 12px;
+      }
+      pre {
+        background-color: #f8f8f8;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+        padding: 10px;
+        overflow: auto;
+      }
+      .error {
+        color: red;
+        font-style: italic;
+      }
+      .success {
+        color: green;
+      }
+      .tabs {
+        overflow: hidden;
+        border: 1px solid #ccc;
+        background-color: #f1f1f1;
+        border-radius: 5px 5px 0 0;
+      }
+      .tab-button {
+        background-color: inherit;
+        float: left;
+        border: none;
+        outline: none;
+        cursor: pointer;
+        padding: 14px 16px;
+        transition: 0.3s;
+        font-size: 16px;
+      }
+      .tab-button:hover {
+        background-color: #ddd;
+      }
+      .tab-button.active {
+        background-color: #3498db;
+        color: white;
+      }
+      .tab-content {
+        display: none;
+        padding: 20px;
+        border: 1px solid #ccc;
+        border-top: none;
+        border-radius: 0 0 5px 5px;
+        animation: fadeEffect 1s;
+      }
+      @keyframes fadeEffect {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      .loading {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(0, 0, 0, 0.3);
+        border-radius: 50%;
+        border-top-color: #3498db;
+        animation: spin 1s ease-in-out infinite;
+        margin-right: 10px;
+        vertical-align: middle;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .message {
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+      }
+      .message.info {
+        background-color: #d1ecf1;
+        border: 1px solid #bee5eb;
+        color: #0c5460;
+      }
+      .message.warning {
+        background-color: #fff3cd;
+        border: 1px solid #ffeeba;
+        color: #856404;
+      }
+      .message.error {
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>ComfyUI SDK - Relatório de Testes</h1>
+
+      <div class="tabs">
+        <button class="tab-button active" onclick="openTab(event, 'summary')">Resumo</button>
+        <button class="tab-button" onclick="openTab(event, 'models')">Modelos</button>
+        <button class="tab-button" onclick="openTab(event, 'generation')">Geração</button>
+        <button class="tab-button" onclick="openTab(event, 'monitoring')">Monitoramento</button>
+      </div>
+
+      <div id="summary" class="tab-content" style="display: block">
+        <div class="section">
+          <h2>Resumo dos Testes</h2>
+          <div id="loading-indicator" class="message info"><span class="loading"></span> Carregando dados...</div>
+          <div id="summary-stats"></div>
+        </div>
+
+        <div class="section">
+          <h2>Hosts Testados</h2>
+          <div id="hosts-table"></div>
+        </div>
+      </div>
+
+      <div id="models" class="tab-content">
+        <div class="section">
+          <h2>Modelos Disponíveis</h2>
+          <div id="models-stats"></div>
+        </div>
+
+        <div class="section">
+          <h2>Modelos Comuns entre Hosts</h2>
+          <div id="common-models"></div>
+        </div>
+      </div>
+
+      <div id="generation" class="tab-content">
+        <div class="section">
+          <h2>Estatísticas de Geração</h2>
+          <div id="generation-stats"></div>
+        </div>
+
+        <div class="section">
+          <h2>Desempenho por Host</h2>
+          <div id="host-performance"></div>
+        </div>
+
+        <div class="section">
+          <h2>Imagens Geradas</h2>
+          <div id="generated-images" class="gallery"></div>
+        </div>
+      </div>
+
+      <div id="monitoring" class="tab-content">
+        <div class="section">
+          <h2>Métricas do Sistema</h2>
+          <div id="system-metrics"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Carregar os dados dos relatórios
+      let modelsData = null;
+      let generationData = null;
+      let monitoringData = null;
+
+      // Função auxiliar para carregar dados JSON
+      async function loadJSON(url) {
+        try {
+          console.log(`Tentando carregar: ${url}`);
+          const response = await fetch(url, {
+            method: "GET",
+            headers: {
+              Accept: "application/json"
+            },
+            mode: "cors", // no-cors, cors, same-origin
+            cache: "no-cache"
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          console.log(`Dados carregados com sucesso de ${url}`);
+          return data;
+        } catch (error) {
+          console.error(`Erro ao carregar ${url}:`, error);
+          throw error;
+        }
+      }
+
+      // Inicializar dados com valores padrão para evitar erros
+      function initializeDefaultData() {
+        if (!modelsData) {
+          modelsData = {
+            testDate: new Date().toISOString(),
+            totalHosts: 0,
+            enabledHosts: 0,
+            onlineHosts: 0,
+            results: [],
+            commonModels: { checkpoints: [], loras: [], embeddings: [] }
+          };
+        }
+
+        if (!generationData) {
+          generationData = {
+            testDate: new Date().toISOString(),
+            totalJobs: 0,
+            successfulJobs: 0,
+            failedJobs: 0,
+            averageJobDuration: 0,
+            hostPerformance: {},
+            jobs: []
+          };
+        }
+
+        if (!monitoringData) {
+          monitoringData = {
+            metrics: [],
+            lastUpdate: new Date().toISOString()
+          };
+        }
+      }
+
+      // Função para mostrar uma mensagem de status
+      function showStatusMessage(type, message) {
+        const loadingIndicator = document.getElementById("loading-indicator");
+        loadingIndicator.className = `message ${type}`;
+        loadingIndicator.innerHTML = message;
+      }
+
+      // Função para esconder o indicador de carregamento
+      function hideLoadingIndicator() {
+        document.getElementById("loading-indicator").style.display = "none";
+      }
+
+      async function loadData() {
+        // Inicializar dados com valores padrão
+        initializeDefaultData();
+
+        // Mostrar indicador de carregamento
+        showStatusMessage("info", '<span class="loading"></span> Carregando dados...');
+
+        let loadedSuccessfully = false;
+
+        // Carregar dados do relatório de modelos
+        try {
+          const data = await loadJSON("./data/analytics-models.json");
+          modelsData = data;
+          updateModelsSection();
+          updateSummarySection();
+          loadedSuccessfully = true;
+        } catch (error) {
+          document.getElementById("models-stats").innerHTML =
+            '<p class="error">Erro ao carregar dados de modelos: ' + error.message + "</p>";
+          console.error("Erro ao carregar modelos:", error);
+        }
+
+        // Carregar dados do relatório de geração
+        try {
+          const data = await loadJSON("./data/analytics-generation.json");
+          generationData = data;
+          updateGenerationSection();
+          updateSummarySection();
+          loadedSuccessfully = true;
+        } catch (error) {
+          document.getElementById("generation-stats").innerHTML =
+            '<p class="error">Erro ao carregar dados de geração: ' + error.message + "</p>";
+          console.error("Erro ao carregar dados de geração:", error);
+        }
+
+        // Carregar dados do relatório de monitoramento
+        try {
+          const data = await loadJSON("./data/analytics-monitoring.json");
+          monitoringData = data;
+          updateMonitoringSection();
+          loadedSuccessfully = true;
+        } catch (error) {
+          document.getElementById("system-metrics").innerHTML =
+            '<p class="error">Erro ao carregar dados de monitoramento: ' + error.message + "</p>";
+          console.error("Erro ao carregar dados de monitoramento:", error);
+        }
+
+        // Atualizar mensagem de status com base nos resultados
+        if (loadedSuccessfully) {
+          showStatusMessage("info", "✅ Dados carregados com sucesso!");
+          setTimeout(hideLoadingIndicator, 2000); // Esconder após 2 segundos
+        } else {
+          showStatusMessage(
+            "warning",
+            "⚠️ Alguns dados não puderam ser carregados. Verifique o console para mais informações."
+          );
+        }
+      }
+
+      function updateSummarySection() {
+        let summaryHtml = '<div class="stat"><div>Data do teste:</div>';
+
+        if (generationData) {
+          const testDate = new Date(generationData.testDate);
+          summaryHtml += `<div class="stat-value">${testDate.toLocaleString()}</div></div>`;
+        } else if (modelsData) {
+          const testDate = new Date(modelsData.testDate);
+          summaryHtml += `<div class="stat-value">${testDate.toLocaleString()}</div></div>`;
+        } else {
+          summaryHtml += '<div class="stat-value">-</div></div>';
+        }
+
+        if (modelsData) {
+          summaryHtml += `
+                    <div class="stat"><div>Total de hosts:</div><div class="stat-value">${modelsData.totalHosts}</div></div>
+                    <div class="stat"><div>Hosts habilitados:</div><div class="stat-value">${modelsData.enabledHosts}</div></div>
+                    <div class="stat"><div>Hosts online:</div><div class="stat-value">${modelsData.onlineHosts}</div></div>
+                `;
+
+          // Criar tabela de hosts
+          let hostsTableHtml = `
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>URL</th>
+                                <th>Status</th>
+                                <th>Tempo de Resposta</th>
+                                <th>Checkpoints</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+          modelsData.results.forEach((host) => {
+            hostsTableHtml += `
+                        <tr>
+                            <td>${host.host}</td>
+                            <td>${host.url}</td>
+                            <td class="${host.status === "online" ? "success" : "error"}">${host.status}</td>
+                            <td>${host.responseTime || "-"} ms</td>
+                            <td>${host.models ? host.models.checkpoints.length : "-"}</td>
+                        </tr>
+                    `;
+          });
+
+          hostsTableHtml += "</tbody></table>";
+          document.getElementById("hosts-table").innerHTML = hostsTableHtml;
+        }
+
+        if (generationData) {
+          summaryHtml += `
+                    <div class="stat"><div>Jobs executados:</div><div class="stat-value">${generationData.totalJobs}</div></div>
+                    <div class="stat"><div>Jobs bem-sucedidos:</div><div class="stat-value">${generationData.successfulJobs}</div></div>
+                    <div class="stat"><div>Taxa de sucesso:</div><div class="stat-value">${((generationData.successfulJobs / generationData.totalJobs) * 100).toFixed(1)}%</div></div>
+                    <div class="stat"><div>Duração média por job:</div><div class="stat-value">${generationData.averageJobDuration.toFixed(0)} ms</div></div>
+                `;
+        }
+
+        document.getElementById("summary-stats").innerHTML = summaryHtml;
+      }
+
+      function updateModelsSection() {
+        if (!modelsData) return;
+
+        let modelsStatsHtml = "";
+        let commonModelsHtml = "";
+
+        modelsData.results.forEach((host) => {
+          if (host.status === "online" && host.models) {
+            modelsStatsHtml += `
+                        <h3>${host.host}</h3>
+                        <div class="stat"><div>Checkpoints:</div><div class="stat-value">${host.models.checkpoints.length}</div></div>
+                        <div class="stat"><div>LoRAs:</div><div class="stat-value">${host.models.loras.length}</div></div>
+                        <div class="stat"><div>Embeddings:</div><div class="stat-value">${host.models.embeddings.length}</div></div>
+                    `;
+
+            // Listar checkpoints
+            if (host.models.checkpoints.length > 0) {
+              modelsStatsHtml += "<h4>Checkpoints:</h4><ul>";
+              host.models.checkpoints.slice(0, 20).forEach((model) => {
+                modelsStatsHtml += `<li>${model}</li>`;
+              });
+              if (host.models.checkpoints.length > 20) {
+                modelsStatsHtml += `<li>... e mais ${host.models.checkpoints.length - 20} checkpoints</li>`;
+              }
+              modelsStatsHtml += "</ul>";
+            }
+          }
+        });
+
+        // Modelos comuns
+        if (modelsData.commonModels) {
+          const commonModels = modelsData.commonModels;
+
+          commonModelsHtml += `
+                    <h3>Checkpoints Comuns (${commonModels.checkpoints.length})</h3>
+                `;
+
+          if (commonModels.checkpoints.length > 0) {
+            commonModelsHtml += "<ul>";
+            commonModels.checkpoints.forEach((model) => {
+              commonModelsHtml += `<li>${model}</li>`;
+            });
+            commonModelsHtml += "</ul>";
+          } else {
+            commonModelsHtml += "<p>Nenhum checkpoint comum encontrado</p>";
+          }
+
+          commonModelsHtml += `
+                    <h3>LoRAs Comuns (${commonModels.loras.length})</h3>
+                `;
+
+          if (commonModels.loras.length > 0) {
+            commonModelsHtml += "<ul>";
+            commonModels.loras.slice(0, 20).forEach((model) => {
+              commonModelsHtml += `<li>${model}</li>`;
+            });
+            if (commonModels.loras.length > 20) {
+              commonModelsHtml += `<li>... e mais ${commonModels.loras.length - 20} LoRAs</li>`;
+            }
+            commonModelsHtml += "</ul>";
+          } else {
+            commonModelsHtml += "<p>Nenhuma LoRA comum encontrada</p>";
+          }
+        }
+
+        document.getElementById("models-stats").innerHTML = modelsStatsHtml;
+        document.getElementById("common-models").innerHTML = commonModelsHtml;
+      }
+
+      function updateGenerationSection() {
+        if (!generationData) return;
+
+        let generationStatsHtml = `
+                <div class="stat"><div>Data do teste:</div><div class="stat-value">${new Date(generationData.testDate).toLocaleString()}</div></div>
+                <div class="stat"><div>Duração total:</div><div class="stat-value">${generationData.totalDuration} ms</div></div>
+                <div class="stat"><div>Jobs totais:</div><div class="stat-value">${generationData.totalJobs}</div></div>
+                <div class="stat"><div>Jobs bem-sucedidos:</div><div class="stat-value">${generationData.successfulJobs}</div></div>
+                <div class="stat"><div>Taxa de sucesso:</div><div class="stat-value">${((generationData.successfulJobs / generationData.totalJobs) * 100).toFixed(1)}%</div></div>
+                <div class="stat"><div>Duração média por job:</div><div class="stat-value">${generationData.averageJobDuration.toFixed(0)} ms</div></div>
+            `;
+
+        // Desempenho por host
+        let hostPerformanceHtml =
+          '<table class="table"><thead><tr><th>Host</th><th>Jobs</th><th>Completados</th><th>Falhas</th><th>Tempo Médio</th></tr></thead><tbody>';
+
+        for (const [host, performance] of Object.entries(generationData.hostPerformance)) {
+          hostPerformanceHtml += `
+                    <tr>
+                        <td>${host}</td>
+                        <td>${performance.totalJobs}</td>
+                        <td>${performance.completedJobs}</td>
+                        <td>${performance.failedJobs}</td>
+                        <td>${performance.averageDuration.toFixed(0)} ms</td>
+                    </tr>
+                `;
+        }
+
+        hostPerformanceHtml += "</tbody></table>";
+
+        // Imagens geradas
+        let imagesHtml = "";
+
+        generationData.jobs.forEach((job) => {
+          if (job.status === "completed" && job.images && job.images.length > 0) {
+            job.images.forEach((imageUrl) => {
+              imagesHtml += `
+                            <div class="gallery-item">
+                                <img src="${imageUrl}" alt="Imagem gerada" onerror="this.src='data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22200%22%20height%3D%22200%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%22200%22%20height%3D%22200%22%20fill%3D%22%23eee%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20style%3D%22font-size%3A%2014px%3B%20text-anchor%3A%20middle%3B%20dominant-baseline%3A%20middle%3B%22%3EImagem%20n%C3%A3o%20dispon%C3%ADvel%3C%2Ftext%3E%3C%2Fsvg%3E'">
+                                <div class="gallery-item-info">
+                                    Host: ${job.host}<br>
+                                    Tempo: ${job.duration} ms
+                                </div>
+                            </div>
+                        `;
+            });
+          }
+        });
+
+        document.getElementById("generation-stats").innerHTML = generationStatsHtml;
+        document.getElementById("host-performance").innerHTML = hostPerformanceHtml;
+        document.getElementById("generated-images").innerHTML = imagesHtml || "<p>Nenhuma imagem disponível</p>";
+      }
+
+      function updateMonitoringSection() {
+        if (!monitoringData) {
+          document.getElementById("system-metrics").innerHTML =
+            '<p class="error">Dados de monitoramento não disponíveis</p>';
+          return;
+        }
+
+        let metricsHtml = `
+                <p>Dados coletados: ${monitoringData.metrics?.length || 0} pontos de dados</p>
+                <p>Última atualização: ${monitoringData.lastUpdate ? new Date(monitoringData.lastUpdate).toLocaleString() : "N/A"}</p>
+            `;
+
+        if (monitoringData.metrics && monitoringData.metrics.length > 0) {
+          // Tabela com as últimas métricas
+          metricsHtml += "<h3>Últimas métricas coletadas</h3>";
+          metricsHtml +=
+            '<table class="table"><thead><tr><th>Host</th><th>Timestamp</th><th>Status</th><th>Queue Size</th><th>Running</th><th>Pending</th><th>CPU</th><th>RAM</th><th>GPU</th></tr></thead><tbody>';
+
+          monitoringData.metrics.slice(-5).forEach((metric) => {
+            const timestamp = metric.timestamp ? new Date(metric.timestamp).toLocaleTimeString() : "N/A";
+            const status = metric.status || "unknown";
+            const statusClass = status === "online" ? "success" : status === "offline" ? "error" : "";
+
+            metricsHtml += `
+                        <tr>
+                            <td>${metric.host || "N/A"}</td>
+                            <td>${timestamp}</td>
+                            <td class="${statusClass}">${status}</td>
+                            <td>${metric.queue?.size !== undefined ? metric.queue.size : "-"}</td>
+                            <td>${metric.queue?.running !== undefined ? metric.queue.running : "-"}</td>
+                            <td>${metric.queue?.pending !== undefined ? metric.queue.pending : "-"}</td>
+                            <td>${metric.system?.cpu !== undefined ? metric.system.cpu + "%" : "-"}</td>
+                            <td>${metric.system?.memory ? ((metric.system.memory.used / metric.system.memory.total) * 100).toFixed(1) + "%" : "-"}</td>
+                            <td>${metric.system?.gpu ? metric.system.gpu.used + "%" : "-"}</td>
+                        </tr>
+                    `;
+          });
+
+          metricsHtml += "</tbody></table>";
+        } else {
+          metricsHtml += "<p>Nenhuma métrica de sistema disponível.</p>";
+        }
+
+        document.getElementById("system-metrics").innerHTML = metricsHtml;
+
+        document.getElementById("system-metrics").innerHTML = metricsHtml;
+      }
+
+      function openTab(evt, tabName) {
+        // Ocultar todo o conteúdo das abas
+        const tabcontent = document.getElementsByClassName("tab-content");
+        for (let i = 0; i < tabcontent.length; i++) {
+          tabcontent[i].style.display = "none";
+        }
+
+        // Remover a classe "active" de todos os botões de abas
+        const tablinks = document.getElementsByClassName("tab-button");
+        for (let i = 0; i < tablinks.length; i++) {
+          tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+
+        // Mostrar a aba atual e adicionar uma classe "active" ao botão que abriu a aba
+        document.getElementById(tabName).style.display = "block";
+        evt.currentTarget.className += " active";
+      }
+
+      // Carregar os dados quando a página carregar
+      window.onload = loadData;
+    </script>
+  </body>
+</html>
