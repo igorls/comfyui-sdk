@@ -1,91 +1,92 @@
 {
-  "testDate": "2025-07-30T01:10:59.393Z",
-  "totalDuration": 12856,
+  "testDate": "2025-07-30T22:43:19.585Z",
+  "workflowUsed": "example-txt2img-workflow.json",
+  "totalDuration": 12621,
   "totalJobs": 6,
   "successfulJobs": 6,
   "failedJobs": 0,
-  "averageJobDuration": 7603.333333333333,
+  "averageJobDuration": 7444.166666666667,
   "hostPerformance": {
     "bruno-desktop": {
       "totalJobs": 6,
       "completedJobs": 6,
       "failedJobs": 0,
-      "totalDuration": 45620,
-      "averageDuration": 7603.333333333333,
+      "totalDuration": 44665,
+      "averageDuration": 7444.166666666667,
       "progressUpdates": 36
     }
   },
   "jobs": [
     {
-      "jobId": "job-1753837846616-e3nfc4y65",
+      "jobId": "job-1753915387022-xrk2hcbi8",
       "host": "bruno-desktop",
-      "startTime": "2025-07-30T01:10:46.616Z",
+      "startTime": "2025-07-30T22:43:07.022Z",
       "status": "completed",
       "progressUpdates": 6,
-      "endTime": "2025-07-30T01:10:48.922Z",
-      "duration": 2306,
+      "endTime": "2025-07-30T22:43:09.263Z",
+      "duration": 2241,
       "images": [
-        "http://192.168.100.179:10888/view?filename=ComfyUI_00087_.png&type=output&subfolder="
+        "http://192.168.100.179:10888/view?filename=ComfyUI_00166_.png&type=output&subfolder="
       ]
     },
     {
-      "jobId": "job-1753837846617-6v3e9g1ix",
+      "jobId": "job-1753915387024-23axfhbuu",
       "host": "bruno-desktop",
-      "startTime": "2025-07-30T01:10:46.617Z",
+      "startTime": "2025-07-30T22:43:07.024Z",
       "status": "completed",
       "progressUpdates": 6,
-      "endTime": "2025-07-30T01:10:51.141Z",
-      "duration": 4524,
+      "endTime": "2025-07-30T22:43:11.448Z",
+      "duration": 4424,
       "images": [
-        "http://192.168.100.179:10888/view?filename=ComfyUI_00088_.png&type=output&subfolder="
+        "http://192.168.100.179:10888/view?filename=ComfyUI_00167_.png&type=output&subfolder="
       ]
     },
     {
-      "jobId": "job-1753837846617-34n6f9tc5",
+      "jobId": "job-1753915387025-ef0my2035",
       "host": "bruno-desktop",
-      "startTime": "2025-07-30T01:10:46.617Z",
+      "startTime": "2025-07-30T22:43:07.025Z",
       "status": "completed",
       "progressUpdates": 6,
-      "endTime": "2025-07-30T01:10:53.238Z",
-      "duration": 6621,
+      "endTime": "2025-07-30T22:43:13.464Z",
+      "duration": 6439,
       "images": [
-        "http://192.168.100.179:10888/view?filename=ComfyUI_00089_.png&type=output&subfolder="
+        "http://192.168.100.179:10888/view?filename=ComfyUI_00168_.png&type=output&subfolder="
       ]
     },
     {
-      "jobId": "job-1753837846618-30pztqelg",
+      "jobId": "job-1753915387025-649tfhi5f",
       "host": "bruno-desktop",
-      "startTime": "2025-07-30T01:10:46.618Z",
+      "startTime": "2025-07-30T22:43:07.025Z",
       "status": "completed",
       "progressUpdates": 6,
-      "endTime": "2025-07-30T01:10:55.286Z",
-      "duration": 8668,
+      "endTime": "2025-07-30T22:43:15.490Z",
+      "duration": 8465,
       "images": [
-        "http://192.168.100.179:10888/view?filename=ComfyUI_00090_.png&type=output&subfolder="
+        "http://192.168.100.179:10888/view?filename=ComfyUI_00169_.png&type=output&subfolder="
       ]
     },
     {
-      "jobId": "job-1753837846618-28csiuxg3",
+      "jobId": "job-1753915387026-acr951kw4",
       "host": "bruno-desktop",
-      "startTime": "2025-07-30T01:10:46.618Z",
+      "startTime": "2025-07-30T22:43:07.026Z",
       "status": "completed",
       "progressUpdates": 6,
-      "endTime": "2025-07-30T01:10:57.345Z",
-      "duration": 10727,
+      "endTime": "2025-07-30T22:43:17.564Z",
+      "duration": 10538,
       "images": [
-        "http://192.168.100.179:10888/view?filename=ComfyUI_00091_.png&type=output&subfolder="
+        "http://192.168.100.179:10888/view?filename=ComfyUI_00170_.png&type=output&subfolder="
       ]
     },
     {
-      "jobId": "job-1753837846619-g9gpjeinn",
+      "jobId": "job-1753915387027-czl99fsk7",
       "host": "bruno-desktop",
-      "startTime": "2025-07-30T01:10:46.619Z",
+      "startTime": "2025-07-30T22:43:07.027Z",
       "status": "completed",
       "progressUpdates": 6,
-      "endTime": "2025-07-30T01:10:59.393Z",
-      "duration": 12774,
+      "endTime": "2025-07-30T22:43:19.585Z",
+      "duration": 12558,
       "images": [
-        "http://192.168.100.179:10888/view?filename=ComfyUI_00092_.png&type=output&subfolder="
+        "http://192.168.100.179:10888/view?filename=ComfyUI_00171_.png&type=output&subfolder="
       ]
     }
   ]
