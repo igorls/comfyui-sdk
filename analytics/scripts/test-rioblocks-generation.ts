@@ -41,7 +41,8 @@ async function runGenerationTest() {
   // ✅ SELECIONE O WORKFLOW AQUI! Edite o nome do arquivo conforme necessário:
   // Os workflows agora estão na pasta analytics/workflows
   // const workflowFileName = "bottle-example.json";
-  const workflowFileName = "example-txt2img-workflow.json";
+  // const workflowFileName = "example-txt2img-workflow.json";
+  const workflowFileName = "akaito_anime_fast.json";
   const workflowPath = `../workflows/${workflowFileName}`;
 
   // Verificar se o arquivo de workflow existe

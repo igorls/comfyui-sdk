@@ -1,0 +1,314 @@
+{
+    "3": {
+        "inputs": {
+            "seed": 1109874901369979,
+            "steps": 27,
+            "cfg": 5,
+            "sampler_name": "euler_ancestral",
+            "scheduler": "simple",
+            "denoise": 1,
+            "model": [
+                "108",
+                0
+            ],
+            "positive": [
+                "6",
+                0
+            ],
+            "negative": [
+                "7",
+                0
+            ],
+            "latent_image": [
+                "5",
+                0
+            ]
+        },
+        "class_type": "KSampler",
+        "_meta": {
+            "title": "KSampler"
+        }
+    },
+    "4": {
+        "inputs": {
+            "ckpt_name": "oneObsession_v16Noobai.safetensors"
+        },
+        "class_type": "CheckpointLoaderSimple",
+        "_meta": {
+            "title": "Load Checkpoint"
+        }
+    },
+    "5": {
+        "inputs": {
+            "width": 832,
+            "height": 1216,
+            "batch_size": 1
+        },
+        "class_type": "EmptyLatentImage",
+        "_meta": {
+            "title": "Empty Latent Image"
+        }
+    },
+    "6": {
+        "inputs": {
+            "text": [
+                "59",
+                0
+            ],
+            "clip": [
+                "108",
+                1
+            ]
+        },
+        "class_type": "CLIPTextEncode",
+        "_meta": {
+            "title": "CLIP Text Encode (Prompt)"
+        }
+    },
+    "7": {
+        "inputs": {
+            "text": [
+                "112",
+                0
+            ],
+            "clip": [
+                "108",
+                1
+            ]
+        },
+        "class_type": "CLIPTextEncode",
+        "_meta": {
+            "title": "Negative Prompt"
+        }
+    },
+    "8": {
+        "inputs": {
+            "samples": [
+                "3",
+                0
+            ],
+            "vae": [
+                "4",
+                2
+            ]
+        },
+        "class_type": "VAEDecode",
+        "_meta": {
+            "title": "VAE Decode"
+        }
+    },
+    "15": {
+        "inputs": {
+            "stop_at_clip_layer": -2,
+            "clip": [
+                "4",
+                1
+            ]
+        },
+        "class_type": "CLIPSetLastLayer",
+        "_meta": {
+            "title": "CLIP Set Last Layer"
+        }
+    },
+    "58": {
+        "inputs": {
+            "string_a": [
+                "109",
+                0
+            ],
+            "string_b": [
+                "110",
+                0
+            ],
+            "delimiter": ","
+        },
+        "class_type": "StringConcatenate",
+        "_meta": {
+            "title": "LoRA TAGS + Emb"
+        }
+    },
+    "59": {
+        "inputs": {
+            "string_a": [
+                "104",
+                0
+            ],
+            "string_b": [
+                "58",
+                0
+            ],
+            "delimiter": ""
+        },
+        "class_type": "StringConcatenate",
+        "_meta": {
+            "title": "FINAL PROMPT"
+        }
+    },
+    "77": {
+        "inputs": {
+            "filename_prefix": "akaito/anime/fast",
+            "images": [
+                "8",
+                0
+            ]
+        },
+        "class_type": "SaveImage",
+        "_meta": {
+            "title": "Original Image"
+        }
+    },
+    "104": {
+        "inputs": {
+            "string_a": [
+                "113",
+                0
+            ],
+            "string_b": [
+                "111",
+                0
+            ],
+            "delimiter": ""
+        },
+        "class_type": "StringConcatenate",
+        "_meta": {
+            "title": "Main Positive"
+        }
+    },
+    "108": {
+        "inputs": {
+            "lora_name": "NOOB_EPSv1_1_detailer_by_vlnvk_v1_0.safetensors",
+            "strength_model": 1.0000000000000002,
+            "strength_clip": 1.0000000000000002,
+            "model": [
+                "4",
+                0
+            ],
+            "clip": [
+                "15",
+                0
+            ]
+        },
+        "class_type": "LoraLoader",
+        "_meta": {
+            "title": "Load LoRA"
+        }
+    },
+    "109": {
+        "inputs": {
+            "value": "embedding:lazypos,embedding:lazyreal"
+        },
+        "class_type": "PrimitiveString",
+        "_meta": {
+            "title": "Positive Embedding"
+        }
+    },
+    "110": {
+        "inputs": {
+            "value": ""
+        },
+        "class_type": "PrimitiveString",
+        "_meta": {
+            "title": "Lora Tags"
+        }
+    },
+    "111": {
+        "inputs": {
+            "value": "masterpiece, best quality, amazing quality, very awa,absurdres,newest,very aesthetic,depth of field, highres,"
+        },
+        "class_type": "PrimitiveStringMultiline",
+        "_meta": {
+            "title": "Common Quality Tags + STYLE"
+        }
+    },
+    "112": {
+        "inputs": {
+            "value": "embedding:lazyneg,\nembedding:lazyloli,\nembedding:lazynsfw,"
+        },
+        "class_type": "PrimitiveStringMultiline",
+        "_meta": {
+            "title": "Negative Prompt"
+        }
+    },
+    "113": {
+        "inputs": {
+            "value": "Professional portrait of a 24-year-old feminine female with pale porcelain skin, striking dark brown eyes with dramatic kohl eyeliner and smoky eye makeup, long black hair with streaks of electric blue and purple, elegant bone structure, and a confident gothic presence. She is dressed in dark e-girl gothic style with black clothing, lace details, and leather accessories, wearing silver jewelry and a stylish, well-fitted outfit. \n\nShe is on a neon lit street\n\nHer expression is warm, confident, and genuinely engaging, with a friendly and approachable demeanor that exudes mystery, intelligence, and artistic charm. \n\nThe composition is polished and professional, capturing her natural charisma and appealing personality in a high-quality dating profile photo."
+        },
+        "class_type": "PrimitiveStringMultiline",
+        "_meta": {
+            "title": "Main Prompt"
+        }
+    },
+    "116": {
+        "inputs": {
+            "upscale_method": "nearest-exact",
+            "scale_by": 1.4000000000000004,
+            "samples": [
+                "3",
+                0
+            ]
+        },
+        "class_type": "LatentUpscaleBy",
+        "_meta": {
+            "title": "Upscale Latent By"
+        }
+    },
+    "117": {
+        "inputs": {
+            "seed": 498746795192767,
+            "steps": 20,
+            "cfg": 3,
+            "sampler_name": "euler_ancestral",
+            "scheduler": "simple",
+            "denoise": 0.5000000000000001,
+            "model": [
+                "108",
+                0
+            ],
+            "positive": [
+                "6",
+                0
+            ],
+            "negative": [
+                "7",
+                0
+            ],
+            "latent_image": [
+                "116",
+                0
+            ]
+        },
+        "class_type": "KSampler",
+        "_meta": {
+            "title": "KSampler"
+        }
+    },
+    "118": {
+        "inputs": {
+            "samples": [
+                "117",
+                0
+            ],
+            "vae": [
+                "4",
+                2
+            ]
+        },
+        "class_type": "VAEDecode",
+        "_meta": {
+            "title": "VAE Decode"
+        }
+    },
+    "120": {
+        "inputs": {
+            "filename_prefix": "akaito/anime/hi-res-fix",
+            "images": [
+                "118",
+                0
+            ]
+        },
+        "class_type": "SaveImage",
+        "_meta": {
+            "title": "Original Image"
+        }
+    }
+}
