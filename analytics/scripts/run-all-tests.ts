@@ -11,7 +11,7 @@ interface TestResult {
   output: string;
 }
 
-async function runScript(scriptName: string): Promise<TestResult> {
+async function runScript(scriptName: string, timeoutMs: number = 180000): Promise<TestResult> {
   return new Promise((resolve) => {
     const startTime = Date.now();
     console.log(`\n\n========================================================`);
@@ -30,6 +30,19 @@ async function runScript(scriptName: string): Promise<TestResult> {
       stdio: ["inherit", "pipe", "pipe"]
     });
 
+    // Implementar timeout para o processo
+    const timeoutId = setTimeout(() => {
+      console.error(`\n⚠️ Timeout exceeded (${timeoutMs / 1000}s) for ${scriptName}`);
+      child.kill("SIGTERM");
+
+      // Esperar um pouco e forçar o encerramento se necessário
+      setTimeout(() => {
+        if (!child.killed) {
+          child.kill("SIGKILL");
+        }
+      }, 3000);
+    }, timeoutMs);
+
     let output = "";
     let error = "";
 
@@ -46,18 +59,22 @@ async function runScript(scriptName: string): Promise<TestResult> {
     });
 
     child.on("close", (code) => {
+      // Limpar o timeout quando o processo terminar
+      clearTimeout(timeoutId);
+
       const endTime = Date.now();
       const success = code === 0;
 
+      const wasTimeout = endTime - startTime >= timeoutMs;
+      const statusText = wasTimeout ? "⏱️ Timed out" : success ? "✅ Completed" : "❌ Failed";
+
       console.log(`\n========================================================`);
-      console.log(
-        `${success ? "✅ Completed" : "❌ Failed"} ${scriptName} in ${((endTime - startTime) / 1000).toFixed(2)}s`
-      );
+      console.log(`${statusText} ${scriptName} in ${((endTime - startTime) / 1000).toFixed(2)}s`);
       console.log(`========================================================\n`);
 
       resolve({
         name: scriptName,
-        success,
+        success: success && !wasTimeout,
         startTime,
         endTime,
         duration: endTime - startTime,
@@ -74,14 +91,14 @@ async function main() {
   const startTime = Date.now();
   const results: TestResult[] = [];
 
-  // 1. Testar descoberta de modelos
-  results.push(await runScript("test-rioblocks-models.ts"));
+  // 1. Testar descoberta de modelos (2 minutos de timeout)
+  results.push(await runScript("test-rioblocks-models.ts", 120000));
 
-  // 2. Testar geração de imagens
-  results.push(await runScript("test-rioblocks-generation.ts"));
+  // 2. Testar geração de imagens (5 minutos de timeout - geração pode demorar)
+  results.push(await runScript("test-rioblocks-generation.ts", 300000));
 
-  // 3. Testar monitoramento (versão curta)
-  results.push(await runScript("test-rioblocks-monitor.ts"));
+  // 3. Testar monitoramento (1 minuto de timeout)
+  results.push(await runScript("test-rioblocks-monitor.ts", 60000));
 
   const endTime = Date.now();
   const totalDuration = endTime - startTime;
@@ -106,7 +123,7 @@ async function main() {
       duration: r.duration
     })),
     analytics: {
-      models: fs.existsSync("./analytics/data/analytics-models.json")
+      models: fs.existsSync("../data/analytics-models.json")
         ? JSON.parse(fs.readFileSync("../data/analytics-models.json", "utf-8"))
         : null,
       generation: fs.existsSync("../data/analytics-generation.json")
@@ -125,6 +142,25 @@ async function main() {
 
   // Informar sobre o relatório HTML
   console.log("\n📋 Para visualizar o relatório completo, execute o script view-report.sh ou serve-report.sh");
+
+  // Forçar encerramento após tempo suficiente para finalizar I/O
+  setTimeout(() => {
+    console.log("\n👋 Encerrando processo...");
+    process.exit(0);
+  }, 1000);
 }
 
-main().catch(console.error);
+// Garantir que o processo não fique preso
+main().catch((error) => {
+  console.error("❌ Erro na execução da suite de testes:", error);
+  process.exit(1);
+});
+
+// Timeout de segurança global (15 minutos)
+setTimeout(
+  () => {
+    console.error("\n⚠️ Timeout global da suite de testes atingido (15 minutos)");
+    process.exit(1);
+  },
+  15 * 60 * 1000
+);

@@ -1,91 +1,91 @@
 {
-  "testDate": "2025-07-29T22:58:29.376Z",
-  "totalDuration": 4316,
+  "testDate": "2025-07-30T01:10:59.393Z",
+  "totalDuration": 12856,
   "totalJobs": 6,
   "successfulJobs": 6,
   "failedJobs": 0,
-  "averageJobDuration": 2637.5,
+  "averageJobDuration": 7603.333333333333,
   "hostPerformance": {
-    "aero-16": {
+    "bruno-desktop": {
       "totalJobs": 6,
       "completedJobs": 6,
       "failedJobs": 0,
-      "totalDuration": 15825,
-      "averageDuration": 2637.5,
+      "totalDuration": 45620,
+      "averageDuration": 7603.333333333333,
       "progressUpdates": 36
     }
   },
   "jobs": [
     {
-      "jobId": "job-1753829905200-4af33zxpd",
-      "host": "aero-16",
-      "startTime": "2025-07-29T22:58:25.200Z",
+      "jobId": "job-1753837846616-e3nfc4y65",
+      "host": "bruno-desktop",
+      "startTime": "2025-07-30T01:10:46.616Z",
       "status": "completed",
       "progressUpdates": 6,
-      "endTime": "2025-07-29T22:58:27.578Z",
-      "duration": 2378,
+      "endTime": "2025-07-30T01:10:48.922Z",
+      "duration": 2306,
       "images": [
-        "http://192.168.100.216:10888/view?filename=ComfyUI_00176_.png&type=output&subfolder="
+        "http://192.168.100.179:10888/view?filename=ComfyUI_00087_.png&type=output&subfolder="
       ]
     },
     {
-      "jobId": "job-1753829905202-64oid5vyw",
-      "host": "aero-16",
-      "startTime": "2025-07-29T22:58:25.202Z",
+      "jobId": "job-1753837846617-6v3e9g1ix",
+      "host": "bruno-desktop",
+      "startTime": "2025-07-30T01:10:46.617Z",
       "status": "completed",
       "progressUpdates": 6,
-      "endTime": "2025-07-29T22:58:26.174Z",
-      "duration": 972,
+      "endTime": "2025-07-30T01:10:51.141Z",
+      "duration": 4524,
       "images": [
-        "http://192.168.100.216:10888/view?filename=ComfyUI_00174_.png&type=output&subfolder="
+        "http://192.168.100.179:10888/view?filename=ComfyUI_00088_.png&type=output&subfolder="
       ]
     },
     {
-      "jobId": "job-1753829905202-0p119ksa2",
-      "host": "aero-16",
-      "startTime": "2025-07-29T22:58:25.202Z",
+      "jobId": "job-1753837846617-34n6f9tc5",
+      "host": "bruno-desktop",
+      "startTime": "2025-07-30T01:10:46.617Z",
       "status": "completed",
       "progressUpdates": 6,
-      "endTime": "2025-07-29T22:58:26.968Z",
-      "duration": 1766,
+      "endTime": "2025-07-30T01:10:53.238Z",
+      "duration": 6621,
       "images": [
-        "http://192.168.100.216:10888/view?filename=ComfyUI_00175_.png&type=output&subfolder="
+        "http://192.168.100.179:10888/view?filename=ComfyUI_00089_.png&type=output&subfolder="
       ]
     },
     {
-      "jobId": "job-1753829905203-mns0hqd9h",
-      "host": "aero-16",
-      "startTime": "2025-07-29T22:58:25.203Z",
+      "jobId": "job-1753837846618-30pztqelg",
+      "host": "bruno-desktop",
+      "startTime": "2025-07-30T01:10:46.618Z",
       "status": "completed",
       "progressUpdates": 6,
-      "endTime": "2025-07-29T22:58:28.167Z",
-      "duration": 2964,
+      "endTime": "2025-07-30T01:10:55.286Z",
+      "duration": 8668,
       "images": [
-        "http://192.168.100.216:10888/view?filename=ComfyUI_00177_.png&type=output&subfolder="
+        "http://192.168.100.179:10888/view?filename=ComfyUI_00090_.png&type=output&subfolder="
       ]
     },
     {
-      "jobId": "job-1753829905203-z8d0qx98u",
-      "host": "aero-16",
-      "startTime": "2025-07-29T22:58:25.203Z",
+      "jobId": "job-1753837846618-28csiuxg3",
+      "host": "bruno-desktop",
+      "startTime": "2025-07-30T01:10:46.618Z",
       "status": "completed",
       "progressUpdates": 6,
-      "endTime": "2025-07-29T22:58:28.776Z",
-      "duration": 3573,
+      "endTime": "2025-07-30T01:10:57.345Z",
+      "duration": 10727,
       "images": [
-        "http://192.168.100.216:10888/view?filename=ComfyUI_00178_.png&type=output&subfolder="
+        "http://192.168.100.179:10888/view?filename=ComfyUI_00091_.png&type=output&subfolder="
       ]
     },
     {
-      "jobId": "job-1753829905203-re72r8giu",
-      "host": "aero-16",
-      "startTime": "2025-07-29T22:58:25.203Z",
+      "jobId": "job-1753837846619-g9gpjeinn",
+      "host": "bruno-desktop",
+      "startTime": "2025-07-30T01:10:46.619Z",
       "status": "completed",
       "progressUpdates": 6,
-      "endTime": "2025-07-29T22:58:29.375Z",
-      "duration": 4172,
+      "endTime": "2025-07-30T01:10:59.393Z",
+      "duration": 12774,
       "images": [
-        "http://192.168.100.216:10888/view?filename=ComfyUI_00179_.png&type=output&subfolder="
+        "http://192.168.100.179:10888/view?filename=ComfyUI_00092_.png&type=output&subfolder="
       ]
     }
   ]

@@ -25,8 +25,18 @@ async function runGenerationTest() {
   console.log("🎨 ComfyUI SDK Test - Image Generation");
   console.log("======================================\n");
 
-  // Carregar configuração
-  const config = JSON.parse(fs.readFileSync("../../comfyui-config-rioblocks.json", "utf-8"));
+  // Carregar configuração exclusivamente da pasta config
+  const configPath = "../config/comfyui-config-rioblocks.json";
+
+  // Verificar se o arquivo existe
+  if (!fs.existsSync(configPath)) {
+    console.error("❌ Arquivo de configuração não encontrado em analytics/config!");
+    console.error("Por favor, crie o arquivo comfyui-config-rioblocks.json na pasta analytics/config");
+    process.exit(1);
+  }
+
+  console.log(`📄 Usando configuração: ${configPath}`);
+  const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
 
   // Carregar workflow
   let exampleWorkflow;
@@ -99,8 +109,9 @@ async function runGenerationTest() {
       let commonCheckpoint = "epicrealism_naturalSinRC1VAE.safetensors"; // Modelo que identificamos como comum
 
       try {
-        if (fs.existsSync("./analytics-models.json")) {
-          const modelsData = JSON.parse(fs.readFileSync("./analytics-models.json", "utf-8"));
+        const modelsDataPath = "../data/analytics-models.json";
+        if (fs.existsSync(modelsDataPath)) {
+          const modelsData = JSON.parse(fs.readFileSync(modelsDataPath, "utf-8"));
           if (
             modelsData.commonModels &&
             modelsData.commonModels.checkpoints &&
@@ -162,10 +173,28 @@ async function runGenerationTest() {
   };
 
   // Inicializar cada API no pool (já que o pool não tem init)
+  console.log(`Inicializando ${apis.length} hosts...`);
+
   for (const api of apis) {
-    await api.init();
+    try {
+      // Definir um timeout para a inicialização
+      const initTimeout = 30000; // 30 segundos
+
+      await Promise.race([
+        api.init(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error(`Timeout ao inicializar API após ${initTimeout}ms`)), initTimeout)
+        )
+      ]);
+    } catch (error) {
+      console.error(`⚠️ Erro ao inicializar host ${api.apiHost}: ${error.message}`);
+      // Continue com os outros hosts mesmo se um falhar
+    }
   }
-  console.log(`✅ Pool initialized with ${apis.length} hosts\n`);
+
+  // Filtrar apenas APIs que foram inicializadas com sucesso
+  const readyApis = apis.filter((api) => api.isReady);
+  console.log(`✅ Pool initialized with ${readyApis.length}/${apis.length} hosts ready\n`);
 
   // Executar múltiplos jobs
   const numberOfJobs = 6; // Reduzido para 6 jobs para teste inicial
@@ -194,9 +223,12 @@ async function runGenerationTest() {
     };
 
     // Garantir que o diretório exista
-    fs.mkdirSync("./analytics/data", { recursive: true });
-    fs.writeFileSync("../data/analytics-generation.json", JSON.stringify(report, null, 2));
-    console.log("\n📊 Analytics saved to ../data/analytics-generation.json");
+    const dataDir = "../data";
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    fs.writeFileSync(`${dataDir}/analytics-generation.json`, JSON.stringify(report, null, 2));
+    console.log(`\n📊 Analytics saved to ${dataDir}/analytics-generation.json`);
 
     // Resumo
     console.log("\n📈 Summary:");
@@ -248,4 +280,37 @@ function generateHostPerformance(analytics: GenerationAnalytics[]) {
   return hostStats;
 }
 
-runGenerationTest().catch(console.error);
+/**
+ * Executa o teste com timeout e cleanup adequado para evitar que o processo fique travado
+ */
+async function main() {
+  try {
+    console.time("Total execution time");
+    await runGenerationTest();
+    console.timeEnd("Total execution time");
+
+    // Força a limpeza de qualquer conexão websocket ou recurso pendente
+    console.log("\n🧹 Cleaning up resources...");
+
+    // Espera um pequeno tempo para logs finais
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    // Forçar finalização do processo
+    process.exit(0);
+  } catch (error) {
+    console.error("\n❌ Error:", error);
+    process.exit(1);
+  }
+}
+
+// Adiciona um timeout global para garantir que o processo não fique preso
+const GLOBAL_TIMEOUT = 5 * 60 * 1000; // 5 minutos
+const timeout = setTimeout(() => {
+  console.error("\n⚠️ Script timed out after", GLOBAL_TIMEOUT / 1000, "seconds");
+  process.exit(1);
+}, GLOBAL_TIMEOUT);
+
+// Limpar o timeout se o processo terminar normalmente
+timeout.unref();
+
+main();

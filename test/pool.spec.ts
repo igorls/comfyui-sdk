@@ -53,7 +53,7 @@ describe("ComfyPool", () => {
 
     expect(initListener).toHaveBeenCalled();
     expect(mockClient.on).toHaveBeenCalled();
-    expect(mockClient.init().waitForReady).toHaveBeenCalled();
+    expect(mockClient.init).toHaveBeenCalled();
   });
 
   test("should add a client to the pool", async () => {

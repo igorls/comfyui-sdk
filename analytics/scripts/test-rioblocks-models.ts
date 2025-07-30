@@ -42,29 +42,76 @@ async function testHostConnection(host: HostConfig): Promise<ModelAnalytics> {
   };
 
   try {
+    console.log(`Conectando a ${host.url} com timeout de ${host.timeout || 30000}ms...`);
     const api = new ComfyApi(host.url, `test-client-${host.name}`);
-    await api.init(3, host.timeout);
+
+    // Definir um tempo máximo para a conexão
+    const timeoutMs = host.timeout || 30000;
+
+    // Criar um controller para abortar a requisição em caso de timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, timeoutMs);
+
+    try {
+      // Inicializar a API com um número menor de tentativas
+      await Promise.race([
+        api.init(3, timeoutMs / 3),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error(`Timeout ao conectar a ${host.url} após ${timeoutMs}ms`)), timeoutMs)
+        )
+      ]);
+
+      clearTimeout(timeoutId);
+      console.log(`✓ Conectado a ${host.url}`);
+    } catch (initError) {
+      clearTimeout(timeoutId);
+      throw initError; // Re-throw the error to be caught by the outer catch
+    }
 
     analytics.responseTime = Date.now() - startTime;
     analytics.status = "online";
 
-    // Coletar informações sobre modelos
-    const [checkpoints, loras, embeddings, samplerInfo] = await Promise.all([
-      api.getCheckpoints(),
-      api.getLoras(),
-      api.getEmbeddings(),
-      api.getSamplerInfo()
-    ]);
+    // Coletar informações sobre modelos com timeout explícito
+    console.log(`Coletando informações de modelos em ${host.url}...`);
 
-    analytics.models = {
-      checkpoints,
-      loras,
-      embeddings,
-      samplers: samplerInfo
+    // Função para criar uma promessa com timeout
+    const withTimeout = (promise, timeoutMs, operation) => {
+      return Promise.race([
+        promise,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error(`Timeout durante ${operation} após ${timeoutMs}ms`)), timeoutMs)
+        )
+      ]);
     };
+
+    try {
+      const modelTimeout = host.timeout || 30000;
+      const [checkpoints, loras, embeddings, samplerInfo] = await Promise.all([
+        withTimeout(api.getCheckpoints(), modelTimeout, "getCheckpoints"),
+        withTimeout(api.getLoras(), modelTimeout, "getLoras"),
+        withTimeout(api.getEmbeddings(), modelTimeout, "getEmbeddings"),
+        withTimeout(api.getSamplerInfo(), modelTimeout, "getSamplerInfo")
+      ]);
+
+      console.log(`✓ Dados de modelos coletados com sucesso de ${host.url}`);
+
+      analytics.models = {
+        checkpoints,
+        loras,
+        embeddings,
+        samplers: samplerInfo
+      };
+    } catch (modelError) {
+      console.error(`⚠️ Erro ao coletar dados de modelos: ${modelError.message}`);
+      // Ainda consideramos o host online, apenas sem dados de modelos
+      analytics.error = `Conectado, mas falhou ao obter modelos: ${modelError.message}`;
+    }
 
     return analytics;
   } catch (error) {
+    console.error(`❌ Erro ao conectar a ${host.url}: ${error instanceof Error ? error.message : String(error)}`);
     analytics.status = "error";
     analytics.error = error instanceof Error ? error.message : String(error);
     analytics.responseTime = Date.now() - startTime;
@@ -73,11 +120,18 @@ async function testHostConnection(host: HostConfig): Promise<ModelAnalytics> {
 }
 
 async function main() {
-  // Carregar configuração
-  const configPath = "../../comfyui-config-rioblocks.json";
-  const config: ComfyConfig = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-
-  console.log("🔍 ComfyUI SDK Test - Model Discovery");
+  // Carregar configuração exclusivamente da pasta config
+  const configPath = "../config/comfyui-config-rioblocks.json";
+  
+  // Verificar se o arquivo existe
+  if (!fs.existsSync(configPath)) {
+    console.error("❌ Arquivo de configuração não encontrado em analytics/config!");
+    console.error("Por favor, crie o arquivo comfyui-config-rioblocks.json na pasta analytics/config");
+    process.exit(1);
+  }
+  
+  console.log(`📄 Usando configuração: ${configPath}`);
+  const config: ComfyConfig = JSON.parse(fs.readFileSync(configPath, "utf-8"));  console.log("🔍 ComfyUI SDK Test - Model Discovery");
   console.log("=====================================\n");
 
   const results: ModelAnalytics[] = [];
@@ -145,10 +199,17 @@ async function main() {
     commonModels: findCommonModels(results)
   };
 
-  // Garantir que o diretório exista
-  fs.mkdirSync("./analytics/data", { recursive: true });
-  fs.writeFileSync("../data/analytics-models.json", JSON.stringify(report, null, 2));
-  console.log("\n📊 Analytics saved to ../data/analytics-models.json");
+  // Garantir que o diretório de dados exista
+  const dataDir = "../data";
+
+  if (!fs.existsSync(dataDir)) {
+    console.log(`📁 Criando diretório ${dataDir}`);
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+
+  const outputPath = `${dataDir}/analytics-models.json`;
+  fs.writeFileSync(outputPath, JSON.stringify(report, null, 2));
+  console.log(`\n📊 Analytics saved to ${outputPath}`);
 
   // Exibir modelos comuns entre os hosts online
   if (report.onlineHosts > 1) {
@@ -234,4 +295,27 @@ function findIntersection(arrays: string[][]): string[] {
   return arrays.reduce((acc, curr) => acc.filter((x) => curr.includes(x)));
 }
 
-main().catch(console.error);
+// Adicionar tratamento de erros global e timeout
+console.log("Iniciando teste de modelos...");
+
+// Criar uma promessa com timeout para o script inteiro
+const scriptTimeout = 120000; // 2 minutos
+const scriptPromise = main();
+
+const timeoutPromise = new Promise((_, reject) => {
+  setTimeout(() => {
+    console.error(`\n⚠️ Timeout global do script após ${scriptTimeout / 1000} segundos!`);
+    console.error("O script foi interrompido por segurança. Verifique se os hosts estão acessíveis.");
+    process.exit(1);
+  }, scriptTimeout);
+});
+
+Promise.race([scriptPromise, timeoutPromise])
+  .then(() => {
+    console.log("\n✅ Script concluído com sucesso!");
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error(`\n❌ Erro durante a execução: ${error.message}`);
+    process.exit(1);
+  });

@@ -164,30 +164,78 @@ export class ComfyApi extends EventTarget {
 
   /**
    * Destroys the client instance.
+   * Ensures all connections, timers and event listeners are properly closed.
    */
   destroy() {
     this.log("destroy", "Destroying client...");
+
+    // Cleanup flag to prevent re-entry
+    if ((this as any)._destroyed) {
+      this.log("destroy", "Client already destroyed");
+      return;
+    }
+    (this as any)._destroyed = true;
+
     // Clean up WebSocket timer
-    if (this.wsTimer) clearInterval(this.wsTimer);
+    if (this.wsTimer) {
+      clearInterval(this.wsTimer);
+      this.wsTimer = null;
+    }
+
     // Clean up polling timer if exists
     if (this._pollingTimer) {
       clearInterval(this._pollingTimer as any);
       this._pollingTimer = null;
     }
-    // Clean up socket event handlers
+
+    // Clean up socket event handlers and force close WebSocket
     if (this.socket?.client) {
-      this.socket.client.onclose = null;
-      this.socket.client.onerror = null;
-      this.socket.client.onmessage = null;
-      this.socket.client.onopen = null;
-      this.socket.client.close();
+      try {
+        // Remove all event handlers
+        this.socket.client.onclose = null;
+        this.socket.client.onerror = null;
+        this.socket.client.onmessage = null;
+        this.socket.client.onopen = null;
+
+        // Forcefully close the WebSocket
+        if (
+          this.socket.client.readyState === WebSocket.OPEN ||
+          this.socket.client.readyState === WebSocket.CONNECTING
+        ) {
+          this.socket.client.close();
+        }
+
+        // If in Node.js environment and socket has terminate method, use it
+        // This is more forceful than normal close
+        if (typeof this.socket.client.terminate === "function") {
+          this.socket.client.terminate();
+        }
+      } catch (e) {
+        this.log("destroy", "Error while closing WebSocket", e);
+      }
     }
+
+    // Destroy all extensions
     for (const ext in this.ext) {
-      this.ext[ext as keyof typeof this.ext].destroy();
+      try {
+        this.ext[ext as keyof typeof this.ext].destroy();
+      } catch (e) {
+        this.log("destroy", `Error destroying extension ${ext}`, e);
+      }
     }
-    this.socket?.close();
-    this.log("destroy", "Client destroyed");
+
+    // Make sure socket is closed
+    try {
+      this.socket?.close();
+      this.socket = null;
+    } catch (e) {
+      this.log("destroy", "Error closing socket", e);
+    }
+
+    // Remove all event listeners
     this.removeAllListeners();
+
+    this.log("destroy", "Client destroyed completely");
   }
 
   private log(fnName: string, message: string, data?: any) {
@@ -819,33 +867,34 @@ export class ComfyApi extends EventTarget {
    *
    * @param maxTries - The maximum number of ping tries.
    * @param delayTime - The delay time between ping tries in milliseconds.
-   * @returns The initialized client instance.
+   * @returns A Promise that resolves when initialization is complete.
    */
-  init(maxTries = 10, delayTime = 1000) {
-    this.pingSuccess(maxTries, delayTime)
-      .then(() => {
-        /**
-         * Get system OS type on initialization.
-         */
-        this.pullOsType();
-        /**
-         * Test features on initialization.
-         */
-        this.testFeatures();
-        /**
-         * Create WebSocket connection on initialization.
-         */
-        this.createSocket();
-        /**
-         * Set terminal subscription on initialization.
-         */
-        this.setTerminalSubscription(this.listenTerminal);
-      })
-      .catch((e) => {
-        this.log("init", "Failed", e);
-        this.dispatchEvent(new CustomEvent("connection_error", { detail: e }));
-      });
-    return this;
+  async init(maxTries = 10, delayTime = 1000): Promise<this> {
+    try {
+      // Wait for ping to succeed
+      await this.pingSuccess(maxTries, delayTime);
+
+      // Get system OS type on initialization
+      await this.pullOsType();
+
+      // Test features on initialization
+      this.testFeatures();
+
+      // Create WebSocket connection on initialization
+      this.createSocket();
+
+      // Set terminal subscription on initialization
+      this.setTerminalSubscription(this.listenTerminal);
+
+      // Mark as ready
+      this.isReady = true;
+
+      return this;
+    } catch (e) {
+      this.log("init", "Failed", e);
+      this.dispatchEvent(new CustomEvent("connection_error", { detail: e }));
+      throw e; // Propagate the error
+    }
   }
 
   private async pingSuccess(maxTries = 10, delayTime = 1000) {
@@ -869,9 +918,14 @@ export class ComfyApi extends EventTarget {
   }
 
   private async pullOsType() {
-    this.getSystemStats().then((data) => {
+    try {
+      const data = await this.getSystemStats();
       this.osType = data.system.os;
-    });
+    } catch (error) {
+      console.warn("Failed to get OS type:", error);
+      // Set to unknown if we can't determine
+      this.osType = "Unknown" as OSType;
+    }
   }
 
   /**
@@ -906,7 +960,7 @@ export class ComfyApi extends EventTarget {
     const BASE_DELAY = 1000;
     // Maximum delay between attempts (15 seconds)
     const MAX_DELAY = 15000;
-    
+
     let attempt = 0;
 
     const tryReconnect = () => {
@@ -917,7 +971,7 @@ export class ComfyApi extends EventTarget {
       if (this.socket?.client) {
         try {
           // Only call terminate if it exists (Node.js environment)
-          if (typeof this.socket.client.terminate === 'function') {
+          if (typeof this.socket.client.terminate === "function") {
             this.socket.client.terminate();
           }
           this.socket.close();
@@ -925,7 +979,7 @@ export class ComfyApi extends EventTarget {
           this.log("socket", "Error while closing previous socket", error);
         }
       }
-      
+
       this.socket = null;
 
       // Create new socket connection
@@ -938,22 +992,20 @@ export class ComfyApi extends EventTarget {
       // Calculate next retry delay with exponential backoff and jitter
       if (attempt < MAX_ATTEMPTS) {
         // Exponential backoff formula: baseDelay * 2^attempt + random jitter
-        const exponentialDelay = Math.min(
-          BASE_DELAY * Math.pow(2, attempt - 1),
-          MAX_DELAY
-        );
-        
+        const exponentialDelay = Math.min(BASE_DELAY * Math.pow(2, attempt - 1), MAX_DELAY);
+
         // Add jitter (±30% of the delay) to prevent all clients reconnecting simultaneously
         const jitter = exponentialDelay * 0.3 * (Math.random() - 0.5);
         const delay = Math.max(1000, exponentialDelay + jitter);
-        
+
         this.log("socket", `Will retry in ${Math.round(delay / 1000)} seconds`);
 
         // Check if the socket is reconnected within the timeout
         setTimeout(() => {
-          if (!this.socket?.client ||
-             (this.socket.client.readyState !== WebSocket.OPEN &&
-              this.socket.client.readyState !== WebSocket.CONNECTING)) {
+          if (
+            !this.socket?.client ||
+            (this.socket.client.readyState !== WebSocket.OPEN && this.socket.client.readyState !== WebSocket.CONNECTING)
+          ) {
             this.log("socket", "Reconnection failed or timed out, retrying...");
             tryReconnect(); // Retry if not connected
           } else {
@@ -985,30 +1037,30 @@ export class ComfyApi extends EventTarget {
   private createSocket(isReconnect: boolean = false) {
     let reconnecting = false;
     let usePolling = false;
-    
+
     if (this.socket) {
       this.log("socket", "Socket already exists, skipping creation.");
       return;
     }
-    
+
     const headers = {
       ...this.getCredentialHeaders()
     };
-    
+
     const existingSession = `?clientId=${this.clientId}`;
     const wsUrl = `ws${this.apiHost.includes("https:") ? "s" : ""}://${this.apiBase}/ws${existingSession}`;
-    
+
     // Try to create WebSocket connection
     try {
       this.socket = new WebSocketClient(wsUrl, { headers });
-      
+
       this.socket.client.onclose = () => {
         if (reconnecting || isReconnect) return;
         reconnecting = true;
         this.log("socket", "Socket closed -> Reconnecting");
         this.reconnectWs(true);
       };
-      
+
       this.socket.client.onopen = () => {
         this.resetLastActivity();
         reconnecting = false;
@@ -1025,63 +1077,63 @@ export class ComfyApi extends EventTarget {
       this.socket = null;
       usePolling = true;
       this.dispatchEvent(new CustomEvent("websocket_unavailable", { detail: error }));
-      
+
       // Set up polling mechanism
       this.setupPollingFallback();
     }
-    
+
     // Only continue with WebSocket setup if creation was successful
     if (this.socket?.client) {
-    this.socket.client.onmessage = (event) => {
-      this.resetLastActivity();
-      try {
-        if (event.data instanceof Buffer) {
-          const buffer = event.data;
-          const view = new DataView(buffer.buffer);
-          const eventType = view.getUint32(0);
-          switch (eventType) {
-            case 1:
-              const imageType = view.getUint32(0);
-              let imageMime;
-              switch (imageType) {
-                case 1:
-                default:
-                  imageMime = "image/jpeg";
-                  break;
-                case 2:
-                  imageMime = "image/png";
-              }
-              const imageBlob = new Blob([buffer.slice(8)], {
-                type: imageMime
-              });
-              this.dispatchEvent(new CustomEvent("b_preview", { detail: imageBlob }));
-              break;
-            default:
-              throw new Error(`Unknown binary websocket message of type ${eventType}`);
-          }
-        } else if (typeof event.data === "string") {
-          const msg = JSON.parse(event.data);
-          if (!msg.data || !msg.type) return;
-          this.dispatchEvent(new CustomEvent("all", { detail: msg }));
-          if (msg.type === "logs") {
-            this.dispatchEvent(new CustomEvent("terminal", { detail: msg.data.entries?.[0] || null }));
+      this.socket.client.onmessage = (event) => {
+        this.resetLastActivity();
+        try {
+          if (event.data instanceof Buffer) {
+            const buffer = event.data;
+            const view = new DataView(buffer.buffer);
+            const eventType = view.getUint32(0);
+            switch (eventType) {
+              case 1:
+                const imageType = view.getUint32(0);
+                let imageMime;
+                switch (imageType) {
+                  case 1:
+                  default:
+                    imageMime = "image/jpeg";
+                    break;
+                  case 2:
+                    imageMime = "image/png";
+                }
+                const imageBlob = new Blob([buffer.slice(8)], {
+                  type: imageMime
+                });
+                this.dispatchEvent(new CustomEvent("b_preview", { detail: imageBlob }));
+                break;
+              default:
+                throw new Error(`Unknown binary websocket message of type ${eventType}`);
+            }
+          } else if (typeof event.data === "string") {
+            const msg = JSON.parse(event.data);
+            if (!msg.data || !msg.type) return;
+            this.dispatchEvent(new CustomEvent("all", { detail: msg }));
+            if (msg.type === "logs") {
+              this.dispatchEvent(new CustomEvent("terminal", { detail: msg.data.entries?.[0] || null }));
+            } else {
+              this.dispatchEvent(new CustomEvent(msg.type, { detail: msg.data }));
+            }
+            if (msg.data.sid) {
+              this.clientId = msg.data.sid;
+            }
           } else {
-            this.dispatchEvent(new CustomEvent(msg.type, { detail: msg.data }));
+            this.log("socket", "Unhandled message", event);
           }
-          if (msg.data.sid) {
-            this.clientId = msg.data.sid;
-          }
-        } else {
-          this.log("socket", "Unhandled message", event);
+        } catch (error) {
+          this.log("socket", "Unhandled message", { event, error });
         }
-      } catch (error) {
-        this.log("socket", "Unhandled message", { event, error });
-      }
-    };
+      };
 
       this.socket.client.onerror = (e) => {
         this.log("socket", "Socket error", e);
-        
+
         // If this is the first error and we're not already in reconnect mode
         if (!reconnecting && !usePolling) {
           usePolling = true;
@@ -1089,7 +1141,7 @@ export class ComfyApi extends EventTarget {
           this.setupPollingFallback();
         }
       };
-      
+
       if (!isReconnect) {
         this.wsTimer = setInterval(() => {
           if (reconnecting) return;
@@ -1102,7 +1154,7 @@ export class ComfyApi extends EventTarget {
       }
     }
   }
-  
+
   /**
    * Sets up a polling mechanism as a fallback when WebSockets are unavailable
    * Polls the server every 2 seconds for status updates
@@ -1113,7 +1165,7 @@ export class ComfyApi extends EventTarget {
    */
   private setupPollingFallback() {
     this.log("socket", "Setting up polling fallback mechanism");
-    
+
     // Clear any existing polling timer
     if (this._pollingTimer) {
       try {
@@ -1123,21 +1175,21 @@ export class ComfyApi extends EventTarget {
         this.log("socket", "Error clearing polling timer", e);
       }
     }
-    
+
     // Poll every 2 seconds
     const POLLING_INTERVAL = 2000;
-    
+
     const pollFn = async () => {
       try {
         // Poll execution status
         const status = await this.pollStatus();
-        
+
         // Simulate an event dispatch similar to WebSocket
         this.dispatchEvent(new CustomEvent("status", { detail: status }));
-        
+
         // Reset activity timestamp to prevent timeout
         this.resetLastActivity();
-        
+
         // Try to re-establish WebSocket connection periodically
         if (!this.socket || !this.socket.client || this.socket.client.readyState !== WebSocket.OPEN) {
           this.log("socket", "Attempting to restore WebSocket connection");
@@ -1159,10 +1211,10 @@ export class ComfyApi extends EventTarget {
         this.log("socket", "Polling error", error);
       }
     };
-    
+
     // Using setInterval and casting to the expected type
     this._pollingTimer = setInterval(pollFn, POLLING_INTERVAL) as any;
-    
+
     this.log("socket", `Polling started with interval of ${POLLING_INTERVAL}ms`);
   }
 

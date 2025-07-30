@@ -133,11 +133,34 @@ export class ComfyPool extends EventTarget {
     this.dispatchEvent(new CustomEvent("added", { detail: { client, clientIdx: index } }));
   }
 
+  /**
+   * Destroys the pool and all its clients.
+   * Ensures all connections, timers and event listeners are properly closed.
+   */
   destroy() {
-    this.clients.forEach((client) => client.destroy());
+    console.log("[ComfyPool] Destroying pool with", this.clients.length, "clients...");
+
+    // Cancel any pending jobs
+    this.jobQueue = [];
+
+    // Destroy all clients properly and ensure they're cleaned up
+    this.clients.forEach((client, index) => {
+      try {
+        console.log(`[ComfyPool] Destroying client ${client.id} (${index + 1}/${this.clients.length})...`);
+        client.destroy();
+      } catch (e) {
+        console.error(`[ComfyPool] Error destroying client ${client.id}:`, e);
+      }
+    });
+
+    // Clear arrays
     this.clients = [];
     this.clientStates = [];
+
+    // Remove all event listeners
     this.removeAllListeners();
+
+    console.log("[ComfyPool] Pool destroyed successfully");
   }
 
   /**
@@ -240,17 +263,17 @@ export class ComfyPool extends EventTarget {
   ): Promise<T> {
     const enableFailover = options?.enableFailover !== false; // Default to true
     const retryDelay = options?.retryDelay || 1000;
-    
+
     return new Promise<T>(async (resolve, reject) => {
       let excludedIds = clientFilter?.excludeIds ? [...clientFilter.excludeIds] : [];
       let attempt = 0;
-      const onlineClients = this.clientStates.filter(c => c.online);
+      const onlineClients = this.clientStates.filter((c) => c.online);
       const maxRetries = options?.maxRetries || onlineClients.length;
       let lastError: any = null;
 
       const tryExecute = async (): Promise<void> => {
         attempt++;
-        
+
         const fn = async (client: ComfyApi, idx?: number) => {
           this.dispatchEvent(new CustomEvent("executing", { detail: { client, clientIdx: idx } }));
           try {
@@ -260,7 +283,7 @@ export class ComfyPool extends EventTarget {
           } catch (e) {
             lastError = e;
             console.error(`[ComfyPool] Job failed on client ${client.id} (attempt ${attempt}/${maxRetries}):`, e);
-            
+
             // If failover is enabled and we have more attempts, exclude this client and retry
             if (enableFailover && attempt < maxRetries && onlineClients.length > excludedIds.length) {
               excludedIds.push(client.id);
@@ -269,7 +292,7 @@ export class ComfyPool extends EventTarget {
                   detail: { client, clientIdx: idx, error: e, willRetry: true, attempt, maxRetries }
                 })
               );
-              
+
               // Wait before retrying
               setTimeout(() => {
                 tryExecute().catch(reject);
@@ -285,11 +308,11 @@ export class ComfyPool extends EventTarget {
             }
           }
         };
-        
+
         try {
-          await this.claim(fn, weight, { 
+          await this.claim(fn, weight, {
             includeIds: clientFilter?.includeIds,
-            excludeIds: excludedIds 
+            excludeIds: excludedIds
           });
         } catch (claimError) {
           // If we can't claim a client (e.g., all excluded), reject
@@ -437,8 +460,11 @@ export class ComfyPool extends EventTarget {
     });
     /**
      * Wait for the client to be ready before start using it
+     * Note: init() now returns the client instance and sets isReady=true internally
      */
-    await client.init().waitForReady();
+    await client.init();
+
+    // No need to call waitForReady() as init() already does that
     this.bindClientSystemMonitor(client, index);
     this.dispatchEvent(new CustomEvent("ready", { detail: { client, clientIdx: index } }));
   }

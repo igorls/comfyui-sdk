@@ -25,7 +25,18 @@ interface SystemMetrics {
 }
 
 async function monitorHosts() {
-  const config = JSON.parse(fs.readFileSync("../../comfyui-config-rioblocks.json", "utf-8"));
+  // Carregar configuração exclusivamente da pasta config
+  const configPath = "../config/comfyui-config-rioblocks.json";
+  
+  // Verificar se o arquivo existe
+  if (!fs.existsSync(configPath)) {
+    console.error("❌ Arquivo de configuração não encontrado em analytics/config!");
+    console.error("Por favor, crie o arquivo comfyui-config-rioblocks.json na pasta analytics/config");
+    process.exit(1);
+  }
+  
+  console.log(`📄 Usando configuração: ${configPath}`);
+  const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
   const metrics: SystemMetrics[] = [];
 
   for (const host of config.hosts.filter((h: any) => h.enabled)) {
@@ -69,7 +80,36 @@ async function monitorHosts() {
       }
 
       const api = new ComfyApi(host.url, `monitor-${host.name}`);
-      await api.init();
+
+      // Definir timeout para inicialização
+      const initTimeout = 30000; // 30 segundos
+
+      try {
+        await Promise.race([
+          api.init(5, 2000), // 5 tentativas com 2s de intervalo
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error(`Timeout ao inicializar após ${initTimeout}ms`)), initTimeout)
+          )
+        ]);
+      } catch (initError) {
+        console.error(`❌ Falha ao inicializar ${host.name}: ${initError.message}`);
+
+        // Adicionar métrica de host com erro
+        const errorMetric: SystemMetrics = {
+          host: host.name,
+          timestamp: new Date(),
+          queue: {
+            size: 0,
+            running: 0,
+            pending: 0
+          },
+          status: "error",
+          error: initError.message
+        };
+
+        metrics.push(errorMetric);
+        continue; // Pular para o próximo host
+      }
 
       // Coletar métricas de fila
       const queue = await api.getQueue();
