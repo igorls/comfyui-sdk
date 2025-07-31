@@ -1,5 +1,3 @@
-import { WebSocketClient } from "./socket";
-
 import {
   BasicCredentials,
   BearerTokenCredentials,
@@ -18,11 +16,13 @@ import {
   SystemStatsResponse
 } from "./types/api";
 
-import { LOAD_CHECKPOINTS_EXTENSION, LOAD_KSAMPLER_EXTENSION, LOAD_LORAS_EXTENSION } from "./contansts";
-import { TComfyAPIEventMap } from "./types/event";
-import { delay } from "./tools";
-import { ManagerFeature } from "./features/manager";
-import { MonitoringFeature } from "./features/monitoring";
+import {WebSocket} from "ws";
+
+import {LOAD_CHECKPOINTS_EXTENSION, LOAD_KSAMPLER_EXTENSION, LOAD_LORAS_EXTENSION} from "./contansts";
+import {TComfyAPIEventMap} from "./types/event";
+import {delay} from "./tools";
+import {ManagerFeature} from "./features/manager";
+import {MonitoringFeature} from "./features/monitoring";
 
 interface FetchOptions extends RequestInit {
   headers?: {
@@ -37,19 +37,19 @@ export class ComfyApi extends EventTarget {
   public listenTerminal: boolean = false;
   public lastActivity: number = Date.now();
 
-  private wsTimeout: number = 10000;
+  private readonly wsTimeout: number = 10000;
   private wsTimer: Timer | null = null;
   private _pollingTimer: NodeJS.Timeout | number | null = null;
 
-  private apiBase: string;
+  private readonly apiBase: string;
   private clientId: string | null;
-  private socket: WebSocketClient | null = null;
+  private socket: WebSocket | null = null;
   private listeners: {
     event: keyof TComfyAPIEventMap;
     options?: AddEventListenerOptions | boolean;
     handler: (event: TComfyAPIEventMap[keyof TComfyAPIEventMap]) => void;
   }[] = [];
-  private credentials: BasicCredentials | BearerTokenCredentials | CustomCredentials | null = null;
+  private readonly credentials: BasicCredentials | BearerTokenCredentials | CustomCredentials | null = null;
 
   public ext = {
     /**
@@ -57,7 +57,7 @@ export class ComfyApi extends EventTarget {
      */
     manager: new ManagerFeature(this),
     /**
-     * Interact with ComfyUI-Crystools Extension for track system resouces
+     * Interact with ComfyUI-Crystools Extension for track system resources
      */
     monitor: new MonitoringFeature(this)
   };
@@ -75,11 +75,10 @@ export class ComfyApi extends EventTarget {
     callback: (event: TComfyAPIEventMap[K]) => void,
     options?: AddEventListenerOptions | boolean
   ) {
-    this.log("on", "Add listener", { type, callback, options });
+    this.log("on", "Add listener", {type, callback, options});
     this.addEventListener(type, callback as any, options);
-    this.listeners.push({ event: type, handler: callback, options });
-    const clr = () => this.off(type, callback, options);
-    return clr;
+    this.listeners.push({event: type, handler: callback, options});
+    return () => this.off(type, callback, options);
   }
 
   public off<K extends keyof TComfyAPIEventMap>(
@@ -87,7 +86,7 @@ export class ComfyApi extends EventTarget {
     callback: (event: TComfyAPIEventMap[K]) => void,
     options?: EventListenerOptions | boolean
   ): void {
-    this.log("off", "Remove listener", { type, callback, options });
+    this.log("off", "Remove listener", {type, callback, options});
     this.listeners = this.listeners.filter((listener) => listener.event !== type && listener.handler !== callback);
     this.removeEventListener(type, callback as any, options);
   }
@@ -189,27 +188,24 @@ export class ComfyApi extends EventTarget {
     }
 
     // Clean up socket event handlers and force close WebSocket
-    if (this.socket?.client) {
+    if (this.socket) {
       try {
         // Remove all event handlers
-        this.socket.client.onclose = null;
-        this.socket.client.onerror = null;
-        this.socket.client.onmessage = null;
-        this.socket.client.onopen = null;
+        this.socket.onclose = null;
+        this.socket.onerror = null;
+        this.socket.onmessage = null;
+        this.socket.onopen = null;
 
         // Forcefully close the WebSocket
         if (
-          this.socket.client.readyState === WebSocket.OPEN ||
-          this.socket.client.readyState === WebSocket.CONNECTING
+          this.socket.readyState === WebSocket.OPEN ||
+          this.socket.readyState === WebSocket.CONNECTING
         ) {
-          this.socket.client.close();
+          this.socket.close();
         }
 
-        // If in Node.js environment and socket has terminate method, use it
-        // This is more forceful than normal close
-        if (typeof this.socket.client.terminate === "function") {
-          this.socket.client.terminate();
-        }
+        // Terminate the WebSocket connection
+        this.socket.terminate();
       } catch (e) {
         this.log("destroy", "Error while closing WebSocket", e);
       }
@@ -239,7 +235,7 @@ export class ComfyApi extends EventTarget {
   }
 
   private log(fnName: string, message: string, data?: any) {
-    this.dispatchEvent(new CustomEvent("log", { detail: { fnName, message, data } }));
+    this.dispatchEvent(new CustomEvent("log", {detail: {fnName, message, data}}));
   }
 
   private apiURL(route: string): string {
@@ -274,18 +270,18 @@ export class ComfyApi extends EventTarget {
       this.log("testCredentials", "Failed", e);
       if (e instanceof Response) {
         if (e.status === 401) {
-          this.dispatchEvent(new CustomEvent("auth_error", { detail: e }));
+          this.dispatchEvent(new CustomEvent("auth_error", {detail: e}));
           return;
         }
       }
-      this.dispatchEvent(new CustomEvent("connection_error", { detail: e }));
+      this.dispatchEvent(new CustomEvent("connection_error", {detail: e}));
       return false;
     }
   }
 
   private async testFeatures() {
-    const exts = Object.values(this.ext);
-    await Promise.all(exts.map((ext) => ext.checkSupported()));
+    const extensions = Object.values(this.ext);
+    await Promise.all(extensions.map((ext) => ext.checkSupported()));
     /**
      * Mark the client is ready to use the API.
      */
@@ -444,7 +440,7 @@ export class ComfyApi extends EventTarget {
 
   /**
    * Sets the terminal subscription status.
-   * Enable will subscribe to terminal logs from websocket.
+   * Enable will subscribe to terminal logs from the websocket.
    */
   async setTerminalSubscription(subscribe: boolean) {
     // Set the terminal subscription status again if call again
@@ -545,14 +541,13 @@ export class ComfyApi extends EventTarget {
    * @returns {Promise<Response>} The response from the API.
    */
   async createUser(username: string): Promise<Response> {
-    const response = await this.fetchApi("/users", {
+    return await this.fetchApi("/users", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ username })
+      body: JSON.stringify({username})
     });
-    return response;
   }
 
   /**
@@ -633,7 +628,7 @@ export class ComfyApi extends EventTarget {
         body: formData
       });
       const imgInfo = await response.json();
-      const mapped = { ...imgInfo, filename: imgInfo.name };
+      const mapped = {...imgInfo, filename: imgInfo.name};
 
       // Check if the response is successful
       if (!response.ok) {
@@ -682,7 +677,7 @@ export class ComfyApi extends EventTarget {
       }
 
       const imgInfo = await response.json();
-      const mapped = { ...imgInfo, filename: imgInfo.name };
+      const mapped = {...imgInfo, filename: imgInfo.name};
       return {
         info: mapped,
         url: this.getPathImage(mapped)
@@ -772,7 +767,7 @@ export class ComfyApi extends EventTarget {
       overwrite?: boolean;
       stringify?: boolean;
       throwOnError?: boolean;
-    } = { overwrite: true, stringify: true, throwOnError: true }
+    } = {overwrite: true, stringify: true, throwOnError: true}
   ): Promise<Response> {
     const response = await this.fetchApi(`/userdata/${encodeURIComponent(file)}?overwrite=${options.overwrite}`, {
       method: "POST",
@@ -817,7 +812,7 @@ export class ComfyApi extends EventTarget {
   async moveUserData(
     source: string,
     dest: string,
-    options: RequestInit & { overwrite?: boolean } = { overwrite: false }
+    options: RequestInit & { overwrite?: boolean } = {overwrite: false}
   ): Promise<Response> {
     return this.fetchApi(
       `/userdata/${encodeURIComponent(source)}/move/${encodeURIComponent(dest)}?overwrite=${options.overwrite}`,
@@ -878,13 +873,13 @@ export class ComfyApi extends EventTarget {
       await this.pullOsType();
 
       // Test features on initialization
-      this.testFeatures();
+      await this.testFeatures();
 
       // Create WebSocket connection on initialization
       this.createSocket();
 
       // Set terminal subscription on initialization
-      this.setTerminalSubscription(this.listenTerminal);
+      await this.setTerminalSubscription(this.listenTerminal);
 
       // Mark as ready
       this.isReady = true;
@@ -892,7 +887,7 @@ export class ComfyApi extends EventTarget {
       return this;
     } catch (e) {
       this.log("init", "Failed", e);
-      this.dispatchEvent(new CustomEvent("connection_error", { detail: e }));
+      this.dispatchEvent(new CustomEvent("connection_error", {detail: e}));
       throw e; // Propagate the error
     }
   }
@@ -936,11 +931,11 @@ export class ComfyApi extends EventTarget {
     const start = performance.now();
     return this.pollStatus(5000)
       .then(() => {
-        return { status: true, time: performance.now() - start } as const;
+        return {status: true, time: performance.now() - start} as const;
       })
       .catch((error) => {
         this.log("ping", "Can't connect to the server", error);
-        return { status: false } as const;
+        return {status: false} as const;
       });
   }
 
@@ -968,11 +963,11 @@ export class ComfyApi extends EventTarget {
       this.log("socket", `WebSocket reconnection attempt #${attempt}`);
 
       // Clean up any existing socket
-      if (this.socket?.client) {
+      if (this.socket) {
         try {
           // Only call terminate if it exists (Node.js environment)
-          if (typeof this.socket.client.terminate === "function") {
-            this.socket.client.terminate();
+          if (typeof this.socket.terminate === "function") {
+            this.socket.terminate();
           }
           this.socket.close();
         } catch (error) {
@@ -982,7 +977,7 @@ export class ComfyApi extends EventTarget {
 
       this.socket = null;
 
-      // Create new socket connection
+      // Create a new socket connection
       try {
         this.createSocket(true);
       } catch (error) {
@@ -1002,10 +997,7 @@ export class ComfyApi extends EventTarget {
 
         // Check if the socket is reconnected within the timeout
         setTimeout(() => {
-          if (
-            !this.socket?.client ||
-            (this.socket.client.readyState !== WebSocket.OPEN && this.socket.client.readyState !== WebSocket.CONNECTING)
-          ) {
+          if (!this.socket || (this.socket.readyState !== WebSocket.OPEN && this.socket.readyState !== WebSocket.CONNECTING)) {
             this.log("socket", "Reconnection failed or timed out, retrying...");
             tryReconnect(); // Retry if not connected
           } else {
@@ -1052,16 +1044,18 @@ export class ComfyApi extends EventTarget {
 
     // Try to create WebSocket connection
     try {
-      this.socket = new WebSocketClient(wsUrl, { headers });
+      this.socket = new WebSocket(wsUrl, {
+        headers: headers
+      });
 
-      this.socket.client.onclose = () => {
+      this.socket.onclose = () => {
         if (reconnecting || isReconnect) return;
         reconnecting = true;
         this.log("socket", "Socket closed -> Reconnecting");
         this.reconnectWs(true);
       };
 
-      this.socket.client.onopen = () => {
+      this.socket.onopen = () => {
         this.resetLastActivity();
         reconnecting = false;
         usePolling = false; // Reset polling flag if we have an open connection
@@ -1076,15 +1070,15 @@ export class ComfyApi extends EventTarget {
       this.log("socket", "WebSocket creation failed, falling back to polling", error);
       this.socket = null;
       usePolling = true;
-      this.dispatchEvent(new CustomEvent("websocket_unavailable", { detail: error }));
+      this.dispatchEvent(new CustomEvent("websocket_unavailable", {detail: error}));
 
       // Set up polling mechanism
       this.setupPollingFallback();
     }
 
     // Only continue with WebSocket setup if creation was successful
-    if (this.socket?.client) {
-      this.socket.client.onmessage = (event) => {
+    if (this.socket) {
+      this.socket.onmessage = (event) => {
         this.resetLastActivity();
         try {
           if (event.data instanceof Buffer) {
@@ -1106,7 +1100,7 @@ export class ComfyApi extends EventTarget {
                 const imageBlob = new Blob([buffer.slice(8)], {
                   type: imageMime
                 });
-                this.dispatchEvent(new CustomEvent("b_preview", { detail: imageBlob }));
+                this.dispatchEvent(new CustomEvent("b_preview", {detail: imageBlob}));
                 break;
               default:
                 throw new Error(`Unknown binary websocket message of type ${eventType}`);
@@ -1114,11 +1108,11 @@ export class ComfyApi extends EventTarget {
           } else if (typeof event.data === "string") {
             const msg = JSON.parse(event.data);
             if (!msg.data || !msg.type) return;
-            this.dispatchEvent(new CustomEvent("all", { detail: msg }));
+            this.dispatchEvent(new CustomEvent("all", {detail: msg}));
             if (msg.type === "logs") {
-              this.dispatchEvent(new CustomEvent("terminal", { detail: msg.data.entries?.[0] || null }));
+              this.dispatchEvent(new CustomEvent("terminal", {detail: msg.data.entries?.[0] || null}));
             } else {
-              this.dispatchEvent(new CustomEvent(msg.type, { detail: msg.data }));
+              this.dispatchEvent(new CustomEvent(msg.type, {detail: msg.data}));
             }
             if (msg.data.sid) {
               this.clientId = msg.data.sid;
@@ -1127,11 +1121,11 @@ export class ComfyApi extends EventTarget {
             this.log("socket", "Unhandled message", event);
           }
         } catch (error) {
-          this.log("socket", "Unhandled message", { event, error });
+          this.log("socket", "Unhandled message", {event, error});
         }
       };
 
-      this.socket.client.onerror = (e) => {
+      this.socket.onerror = (e) => {
         this.log("socket", "Socket error", e);
 
         // If this is the first error and we're not already in reconnect mode
@@ -1185,13 +1179,13 @@ export class ComfyApi extends EventTarget {
         const status = await this.pollStatus();
 
         // Simulate an event dispatch similar to WebSocket
-        this.dispatchEvent(new CustomEvent("status", { detail: status }));
+        this.dispatchEvent(new CustomEvent("status", {detail: status}));
 
         // Reset activity timestamp to prevent timeout
         this.resetLastActivity();
 
         // Try to re-establish WebSocket connection periodically
-        if (!this.socket || !this.socket.client || this.socket.client.readyState !== WebSocket.OPEN) {
+        if (!this.socket || !this.socket || this.socket.readyState !== WebSocket.OPEN) {
           this.log("socket", "Attempting to restore WebSocket connection");
           try {
             this.createSocket(true);
@@ -1247,12 +1241,12 @@ export class ComfyApi extends EventTarget {
     try {
       const response = await this.fetchApi(`/experiment/models/${encodeURIComponent(folder)}`);
       if (!response.ok) {
-        this.log("getModelFiles", "Failed to fetch model files", { folder, response });
+        this.log("getModelFiles", "Failed to fetch model files", {folder, response});
         throw new Error(`Failed to fetch model files: ${response.status} ${response.statusText}`);
       }
       return response.json();
     } catch (error) {
-      this.log("getModelFiles", "Error fetching model files", { folder, error });
+      this.log("getModelFiles", "Error fetching model files", {folder, error});
       throw error;
     }
   }
@@ -1272,7 +1266,7 @@ export class ComfyApi extends EventTarget {
       );
 
       if (!response.ok) {
-        this.log("getModelPreview", "Failed to fetch model preview", { folder, pathIndex, filename, response });
+        this.log("getModelPreview", "Failed to fetch model preview", {folder, pathIndex, filename, response});
         throw new Error(`Failed to fetch model preview: ${response.status} ${response.statusText}`);
       }
 
@@ -1284,7 +1278,7 @@ export class ComfyApi extends EventTarget {
         contentType
       };
     } catch (error) {
-      this.log("getModelPreview", "Error fetching model preview", { folder, pathIndex, filename, error });
+      this.log("getModelPreview", "Error fetching model preview", {folder, pathIndex, filename, error});
       throw error;
     }
   }

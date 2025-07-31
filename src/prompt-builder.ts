@@ -195,7 +195,7 @@ export class PromptBuilder<I extends string, O extends string, T extends NodeDat
         let current = this.prompt as any;
         for (let i = 0; i < keys.length - 1; i++) {
           if (!current[keys[i]]) {
-            current[keys[i]] = {}; // Alow to set value to undefined path
+            current[keys[i]] = {}; // Allow setting value to undefined path
           }
           current = current[keys[i]];
         }
@@ -235,7 +235,7 @@ export class PromptBuilder<I extends string, O extends string, T extends NodeDat
       for (let i = 0; i < keys.length - 1; i++) {
         if (keys[i] === "__proto__" || keys[i] === "constructor") continue;
         if (!current[keys[i]]) {
-          current[keys[i]] = {}; // Alow to set value to undefined path
+          current[keys[i]] = {}; // Allow to set value to undefined path
         }
         current = current[keys[i]];
       }

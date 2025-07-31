@@ -65,7 +65,7 @@ export class ManagerFeature extends AbstractFeature {
   /**
    * Retrieves a list of extension's nodes based on the specified mode.
    *
-   * Usefull to find the node suitable for the current workflow.
+   * Useful to find the node suitable for the current workflow.
    *
    * @param mode - The mode to determine the source of the nodes. Defaults to "local".
    * @returns A promise that resolves to an array of extension nodes.
@@ -115,7 +115,7 @@ export class ManagerFeature extends AbstractFeature {
    * @param mode - The update mode. Can be "local" or "cache". Defaults to "local".
    * @returns An object representing the result of the extension update.
    */
-  async updataAllExtensions(mode: "local" | "cache" = "local") {
+  async updateAllExtensions(mode: "local" | "cache" = "local") {
     const data = await this.fetchApi(`/customnode/update_all?mode=${mode}`);
     if (data && data.ok) {
       if (data.status === 200) {

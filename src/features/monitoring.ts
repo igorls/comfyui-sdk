@@ -32,7 +32,7 @@ export class MonitoringFeature extends AbstractFeature {
     options?: AddEventListenerOptions | boolean;
     handler: (event: TMonitorEventMap[keyof TMonitorEventMap]) => void;
   }[] = [];
-  private binded = false;
+  private bound = false;
 
   async checkSupported() {
     const data = await this.client.getNodeDefs(SYSTEM_MONITOR_EXTENSION);
@@ -181,10 +181,10 @@ export class MonitoringFeature extends AbstractFeature {
   }
 
   private bind() {
-    if (this.binded) {
+    if (this.bound) {
       return;
     } else {
-      this.binded = true;
+      this.bound = true;
     }
     this.client.on("all", (ev) => {
       const msg = ev.detail;
