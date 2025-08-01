@@ -84,7 +84,6 @@ export class ComfyPool extends EventTarget {
     }, 5000);
 
     this.initPool(clients).then(() => {
-      console.log("[ComfyPool] Pool initialized with", this.clients.length, "clients.");
       this.dispatchEvent(new CustomEvent("init"));
     }).catch(reason => {
       console.error("[ComfyPool] Error initializing pool:", reason);
