@@ -472,8 +472,14 @@ export class ComfyApi extends EventTarget {
    * @returns {Promise<string[]>} A list of embedding names.
    */
   async getEmbeddings(): Promise<string[]> {
-    const response = await this.fetchApi("/embeddings");
-    return response.json();
+    const response = await this.fetchApi("/api/embeddings?page_size=100");
+    try {
+      const data = await response.json();
+      return data.items.map((model: any) => model.model_name);
+    } catch (error) {
+      console.error("[ComfyUI] Error fetching embeddings:", error);
+      return [];
+    }
   }
 
   /**
