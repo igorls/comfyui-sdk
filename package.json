@@ -1,5 +1,5 @@
 {
-  "name": "@saintno/comfyui-sdk",
+  "name": "@akaito/comfyui-sdk",
   "version": "0.2.47",
   "description": "SDK for ComfyUI",
   "main": "build/index.js",
@@ -23,15 +23,15 @@
   },
   "homepage": "https://github.com/tctien342/comfyui-sdk#readme",
   "devDependencies": {
-    "@types/bun": "^1.1.11",
-    "@types/jest": "30.0.0",
-    "@types/node": "24.1.0",
-    "@types/ws": "^8.5.12",
+    "@types/bun": "^1.2.19",
+    "@types/jest": "^30.0.0",
+    "@types/node": "24.2.1",
+    "@types/ws": "^8.18.1",
     "auto-changelog": "^2.3.0",
     "commitizen": "^4.2.4",
     "cz-conventional-changelog": "^3.3.0",
     "prettier": "^3.4.2",
-    "typescript": "^5.8.3"
+    "typescript": "^5.9.2"
   },
   "peerDependencies": {},
   "keywords": [

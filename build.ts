@@ -23,12 +23,12 @@ console.log("Building ESM bundle...");
     sourcemap: "external",
     target: "node"
   });
-  
+
   console.log("ESM bundle completed!");
 
   // Copy TypeScript declaration files using tsc
   console.log("Generating TypeScript declarations...");
-  
+
   const result = Bun.spawnSync({
     cmd: ["npx", "tsc", "--emitDeclarationOnly", "--outDir", "build"],
     cwd: process.cwd(),
@@ -38,7 +38,8 @@ console.log("Building ESM bundle...");
 
   if (result.exitCode !== 0) {
     console.error("TypeScript compilation failed:");
-    console.error(result.stderr.toString());
+    console.log(result.stderr.toString());
+    console.log(result.stdout.toString());
     process.exit(1);
   }
 

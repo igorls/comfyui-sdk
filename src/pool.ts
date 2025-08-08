@@ -55,7 +55,7 @@ export class ComfyPool extends EventTarget {
     handler: (event: TComfyPoolEventMap[keyof TComfyPoolEventMap]) => void;
   }[] = [];
   private readonly maxQueueSize: number = 1000;
-  private poolMonitoringInterval?: NodeJS.Timeout | undefined;
+  private poolMonitoringInterval: any;
 
   constructor(
     clients: ComfyApi[],
